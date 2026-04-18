@@ -1,0 +1,20 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Fiel - Misas</title><style>body{font-family:sans-serif;background:#fff;margin:20px} .capa{border:1px solid #eee;padding:15px;margin-bottom:15px;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1)} button{background:#000;color:#fff;border:none;padding:12px;width:100%;border-radius:5px;cursor:pointer;margin-top:10px} .cal{background:#eee;color:#333;text-decoration:none;display:inline-block;padding:5px 10px;margin-top:10px;font-size:12px;border-radius:4px}</style></head><body><h2>⛪ Capillas Madrid</h2><div id="m">Cargando...</div>
+<script type="module">
+import { initializeApp } from "https://gstatic.com";
+import { getDatabase, ref, onValue } from "https://gstatic.com";
+const cfg = { databaseURL: "https://misas-aeropuerto-madrid-default-rtdb.europe-west1.firebasedatabase.app/" };
+const app = initializeApp(cfg); const db = getDatabase(app); let nActiva = null;
+window.setNoti = (t) => { nActiva = t; alert("Notificaciones activas para " + t + " (No cierres esta pestaña)"); if (Notification.permission !== "granted") Notification.requestPermission(); };
+onValue(ref(db, 'misas'), (s) => {
+  const data = s.val(); const div = document.getElementById('m'); div.innerHTML = '';
+  ['T1','T2','T4'].forEach(t => {
+    let h = `<div class="capa"><h3>Terminal ${t}</h3><button onclick="setNoti('${t}')">🔔 Notificarme ${t}</button>`;
+    if(data) Object.values(data).filter(m => m.c === t).forEach(m => {
+      const urlCal = `https://google.com{t}&dates=${m.f.replace(/-/g,'')}T${m.h.replace(':','')}00Z/${m.f.replace(/-/g,'')}T${m.h.replace(':','')}3000Z`;
+      h += `<p><b>${m.h}h</b> - ${m.f} <br><a class="cal" href="${urlCal}" target="_blank">🗓️ Añadir a Google Calendar</a></p>`;
+    });
+    div.innerHTML += h + `</div>`;
+  });
+  if(nActiva) new Notification("Nueva Misa", {body: "Actualización en Terminal " + nActiva});
+});
+</script></body></html>
