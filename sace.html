@@ -54,15 +54,16 @@
         var mesKey = hoy.getFullYear() + "-" + (hoy.getMonth() + 1);
         var anoKey = hoy.getFullYear();
 
-        function publicar() {
-            var c = document.getElementById('c').value, f = document.getElementById('f').value, h = document.getElementById('h').value, o = document.getElementById('obs').value;
-            if(!f || !h) return alert("Faltan datos");
-            db.ref('misas').push({c:c, f:f, h:h, o:o});
-            db.ref('estadisticas/misas/' + mesKey).transaction(v => (v || 0) + 1);
-            db.ref('estadisticas/misas/' + anoKey).transaction(v => (v || 0) + 1);
-            alert("✅ Publicada");
-            document.getElementById('obs').value = "";
-        }
+function publicar() {
+    var c = document.getElementById('c').value, f = document.getElementById('f').value, h = document.getElementById('h').value, o = document.getElementById('obs').value;
+    if(!f || !h) return alert("Faltan datos");
+    
+    // Ahora enviamos la clave con el enlace para que Firebase nos deje escribir
+    db.ref('misas').push({c:c, f:f, h:h, o:o, auth: "MADRID2033"});
+    
+    alert("✅ Publicada");
+    document.getElementById('obs').value = "";
+}
 
         db.ref('estadisticas').on('value', function(snap) {
             var s = snap.val() || {misas:{}, visitas:{}};
