@@ -3,60 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Horarios de Misas</title>
-    <!-- Librerías de conexión (Quita los espacios al pegar) -->
+    <title>Sacerdote - Gestión</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
-        body{font-family:sans-serif; background:#fff; padding:20px; color:#333; text-align:center}
-        .terminal{max-width:500px; margin:0 auto 20px auto; border:1px solid #eee; padding:15px; border-radius:10px; box-shadow:0 2px 5px rgba(0,0,0,0.05); text-align:left}
-        h2{margin-top:0; border-bottom:2px solid #000; padding-bottom:5px; font-size:22px}
-        .misa{background:#f9f9f9; padding:12px; margin:10px 0; border-radius:5px; border-left:5px solid #000}
-        .boton-cal{display:inline-block; margin-top:8px; font-size:12px; color:#555; text-decoration:none; border:1px solid #bbb; padding:5px 10px; border-radius:4px; background:#fff}
+        body{font-family:sans-serif; background:#f4f4f4; padding:20px; text-align:center}
+        .box{max-width:450px; margin:0 auto 20px; background:#fff; padding:20px; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,0.1)}
+        input, select, button{display:block; width:100%; padding:15px; margin:10px 0; border:1px solid #ccc; border-radius:5px; font-size:16px; box-sizing:border-box}
+        button{background:#000; color:#fff; border:none; font-weight:bold; cursor:pointer}
+        .item-misa{background:#eee; margin:10px 0; padding:10px; display:flex; justify-content:space-between; align-items:center; border-radius:5px; text-align:left}
+        .btn-borrar{background:#ff4444; width:auto; padding:8px 12px; margin:0; font-size:14px}
     </style>
 </head>
 <body>
-    <h1>✝ Horarios de Misas</h1>
-    <div id="listado">Cargando horarios...</div>
-
+    <div class="box">
+        <h2>✝ Publicar Misa</h2>
+        <select id="c"><option value="T1">Terminal T1</option><option value="T2">Terminal T2</option><option value="T4">Terminal T4</option></select>
+        <input type="date" id="f"><input type="time" id="h">
+        <input type="text" id="obs" placeholder="Observaciones opcionales (ej: Capilla P2)">
+        <button onclick="publicar()">PUBLICAR MISA</button>
+    </div>
+    <div class="box">
+        <h3>Misas Activas</h3>
+        <div id="listaSace">Cargando...</div>
+    </div>
     <script>
-        // CONFIGURACIÓN (Quita los espacios aquí abajo)
-        var config = { 
-            databaseURL: "https://misas-aeropuerto-madrid-default-rtdb.europe-west1.firebasedatabase.app" 
-        };
-        
+        var config = { databaseURL: "https://misas-aeropuerto-madrid-default-rtdb.europe-west1.firebasedatabase.app" };
         firebase.initializeApp(config);
         var db = firebase.database();
 
-        // Leer datos en tiempo real
-        db.ref('misas').on('value', function(snapshot) {
-            var datos = snapshot.val();
-            var listadoDiv = document.getElementById('listado');
-            listadoDiv.innerHTML = "";
+        function publicar() {
+            var cap = document.getElementById('c').value, fec = document.getElementById('f').value, hor = document.getElementById('h').value, obs = document.getElementById('obs').value;
+            if(!fec || !hor) return alert("Faltan datos");
+            db.ref('misas').push({c:cap, f:fec, h:hor, o:obs});
+            alert("✅ Publicada");
+            document.getElementById('obs').value = "";
+        }
 
-            var terminales = ["T1", "T2", "T4"];
-            
-            terminales.forEach(function(t) {
-                var html = '<div class="terminal"><h2>Terminal ' + t + '</h2>';
-                var hayMisas = false;
-
-                for (var id in datos) {
-                    var m = datos[id];
-                    if (m.c === t) {
-                        hayMisas = true;
-                        // Enlace para Google Calendar
-                        var linkCal = "https://google.com+" + t + "&dates=" + m.f.replace(/-/g,'') + "T" + m.h.replace(':','') + "00Z/" + m.f.replace(/-/g,'') + "T" + m.h.replace(':','') + "3000Z";
-                        html += '<div class="misa"><b>' + m.h + 'h</b> - ' + m.f + '<br><a href="' + linkCal + '" target="_blank" class="boton-cal">🗓️ Añadir a mi calendario</a></div>';
-                    }
-                }
-
-                if (!hayMisas) {
-                    html += '<p style="color:#999; font-style:italic">No hay misas extraordinarias hoy.</p>';
-                }
-                html += '</div>';
-                listadoDiv.innerHTML += html;
-            });
+        db.ref('misas').on('value', function(snap) {
+            var datos = snap.val(), div = document.getElementById('listaSace');
+            div.innerHTML = "";
+            for (var id in datos) {
+                var m = datos[id];
+                div.innerHTML += '<div class="item-misa"><span><b>' + m.c + '</b>: ' + m.h + 'h<br><small>' + (m.o || "") + '</small></span>' +
+                    '<button class="btn-borrar" onclick="borrar(\'' + id + '\')">🗑️</button></div>';
+            }
         });
+
+        function borrar(id) { if(confirm("¿Borrar?")) db.ref('misas/' + id).remove(); }
     </script>
 </body>
 </html>
