@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>✝ Horarios Misas</title>
+    <!-- Librerías de conexión (Quita los espacios) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
@@ -11,10 +12,10 @@
         .terminal{max-width:500px; margin:0 auto 25px auto; border:1px solid #eee; padding:15px; border-radius:10px; box-shadow:0 2px 5px rgba(0,0,0,0.05); text-align:left}
         h1{font-size:26px; margin-bottom:30px}
         h2{margin:0; font-size:20px; color:#000}
-        .nombre-capilla{font-size:13px; color:#667; margin-bottom:18px; display:block; border-bottom:2px solid #000; padding-bottom:5px}
+        .nombre-capilla{font-size:13px; color:#666; margin-bottom:10px; display:block; border-bottom:2px solid #000; padding-bottom:5px}
         .misa{background:#f9f9f9; padding:15px; margin:10px 0; border-radius:5px; border-left:6px solid #000}
         .hora{font-size:20px; font-weight:bold}
-        .fecha{font-size:14px; color:#667; margin-left:10px}
+        .fecha{font-size:14px; color:#666; margin-left:10px}
         .obs{font-size:15px; color:#444; font-style:italic; margin-top:8px; padding-top:5px; border-top:1px solid #ddd}
     </style>
 </head>
@@ -23,33 +24,59 @@
     <div id="listado">Conectando...</div>
 
     <script>
-        var config = { databaseURL: "https://misas-aeropuerto-madrid-default-rtdb.europe-west1.firebasedatabase.app" };
+        // CONFIGURACIÓN (Quita los espacios aquí abajo)
+        var config = { 
+            databaseURL: "https://misas-aeropuerto-madrid-default-rtdb.europe-west1.firebasedatabase.app" 
+        };
+        
         firebase.initializeApp(config);
         var db = firebase.database();
         var hoy = new Date();
         var mesK = hoy.getFullYear() + "-" + (hoy.getMonth() + 1);
         var anoK = hoy.getFullYear();
 
-        // CONTADOR DE VISITAS en "estadisticas"
+        // CONTADOR DE VISITAS
         db.ref('estadisticas/visitas/' + mesK).transaction(v => (v || 0) + 1);
         db.ref('estadisticas/visitas/' + anoK).transaction(v => (v || 0) + 1);
 
         var nombres = { "T1": "Nuestra Señora de Loreto", "T2": "Nuestra Señora de Guadalupe", "T4": "Santiago Apóstol" };
 
         db.ref('misas').on('value', function(snapshot) {
-            var datos = snapshot.val(), listadoDiv = document.getElementById('listado'), ahora = new Date();
+            var datos = snapshot.val();
+            var listadoDiv = document.getElementById('listado');
             listadoDiv.innerHTML = "";
+            var ahora = new Date();
+
+            // Convertir objeto en lista para poder ordenar
+            var listaMisas = [];
+            for (var id in datos) {
+                var m = datos[id];
+                m.fechaObjeto = new Date(m.f + "T" + m.h);
+                listaMisas.push(m);
+            }
+
+            // ORDENAR: De la más cercana a la más lejana
+            listaMisas.sort(function(a, b) {
+                return a.fechaObjeto - b.fechaObjeto;
+            });
+
             ["T1", "T2", "T4"].forEach(function(t) {
                 var html = '<div class="terminal"><h2>Terminal ' + t + '</h2><span class="nombre-capilla">Capilla ' + nombres[t] + '</span>';
-                var hayM = false;
-                for (var id in datos) {
-                    var m = datos[id]; var hM = new Date(m.f + "T" + m.h);
-                    if (m.c === t && (hM.getTime() + 1800000) > ahora.getTime()) {
-                        hayM = true;
-                        html += '<div class="misa"><span class="hora">' + m.h + 'h</span><span class="fecha">' + m.f + '</span>' + (m.o ? '<div class="obs">' + m.o + '</div>' : '') + '</div>';
+                var hayMisasVisibles = false;
+
+                listaMisas.forEach(function(m) {
+                    // Solo mostrar si es la terminal correcta y no han pasado más de 30 min
+                    if (m.c === t && (m.fechaObjeto.getTime() + 1800000) > ahora.getTime()) {
+                        hayMisasVisibles = true;
+                        html += '<div class="misa">' +
+                                '<span class="hora">' + m.h + 'h</span>' +
+                                '<span class="fecha">' + m.f + '</span>' +
+                                (m.o ? '<div class="obs">' + m.o + '</div>' : '') +
+                                '</div>';
                     }
-                }
-                if (!hayM) html += '<p style="color:#999; font-style:italic; margin:15px 0">No hay misas próximas.</p>';
+                });
+
+                if (!hayMisasVisibles) html += '<p style="color:#999; font-style:italic; margin:15px 0">No hay misas próximas.</p>';
                 listadoDiv.innerHTML += html + '</div>';
             });
         });
