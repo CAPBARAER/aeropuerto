@@ -30,12 +30,12 @@
         firebase.initializeApp(config);
         var db = firebase.database();
         var misasProgramadas = [];
-        var avisadas = {}; // Para no repetir avisos
+        var avisadas = {}; 
 
         function pedirPermiso() {
             Notification.requestPermission().then(perm => {
                 if (perm === 'granted') {
-                    alert("✅ Alertas activadas. Mantén esta pestaña abierta.");
+                    alert("✅ Alertas activadas. Mantén esta pestaña abierta.Al depender de la configuración local, pueden no funcionar las alertas emergentes");
                     document.getElementById('btnNoti').innerText = "✅ ALERTAS ACTIVADAS";
                     document.getElementById('btnNoti').style.background = "#4CAF50";
                 }
@@ -47,24 +47,31 @@
             var listadoDiv = document.getElementById('listado');
             listadoDiv.innerHTML = "";
             misasProgramadas = []; 
+            var ahora = new Date();
 
             var terminales = ["T1", "T2", "T4"];
             terminales.forEach(function(t) {
                 var html = '<div class="terminal"><h2>Terminal ' + t + '</h2>';
-                var hayMisas = false;
+                var hayMisasVisibles = false;
+
                 for (var id in datos) {
                     var m = datos[id];
-                    if (m.c === t) {
-                        hayMisas = true;
-                        m.id = id; // Guardamos el ID para controlar avisos
+                    var horaMisa = new Date(m.f + "T" + m.h);
+                    
+                    // FILTRO: Solo mostrar si la misa no ha terminado (margen de 30 min)
+                    if (m.c === t && (horaMisa.getTime() + 1800000) > ahora.getTime()) {
+                        hayMisasVisibles = true;
+                        m.id = id;
                         misasProgramadas.push(m);
+                        
                         var fG = m.f.replace(/-/g,'');
                         var hG = m.h.replace(':','');
                         var linkCal = "https://google.com" + t + "&dates=" + fG + "T" + hG + "00/" + fG + "T" + hG + "30";
+                        
                         html += '<div class="misa"><b>' + m.h + 'h</b> - ' + m.f + '<br><a href="' + linkCal + '" target="_blank" class="boton-cal">🗓️ AGENDAR</a></div>';
                     }
                 }
-                if (!hayMisas) html += '<p style="color:#999; font-style:italic">No hay misas hoy.</p>';
+                if (!hayMisasVisibles) html += '<p style="color:#999; font-style:italic">No hay misas próximas.</p>';
                 html += '</div>';
                 listadoDiv.innerHTML += html;
             });
@@ -77,16 +84,14 @@
                 var horaMisa = new Date(m.f + "T" + m.h);
                 var difMin = Math.ceil((horaMisa - ahora) / 1000 / 60);
                 
-                // Tiempos de aviso: 15, 5 y 1 minuto
                 [15, 5, 1].forEach(function(minAviso) {
                     var claveAviso = m.id + "_" + minAviso;
                     if (difMin === minAviso && !avisadas[claveAviso]) {
                         if (Notification.permission === "granted") {
                             new Notification("✝ MISA EN " + m.c, {
                                 body: "Faltan " + minAviso + " minutos para el inicio.",
-                                icon: "https://github.io"
                             });
-                            avisadas[claveAviso] = true; // Marcar como avisada
+                            avisadas[claveAviso] = true;
                         }
                     }
                 });
