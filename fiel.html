@@ -4,18 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>✝ Horarios Misas</title>
-    <!-- Librerías de conexión (Quita los espacios) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
         body{font-family:sans-serif; background:#fff; padding:20px; color:#333; text-align:center}
-        .terminal{max-width:500px; margin:0 auto 25px auto; border:1px solid #eee; padding:15px; border-radius:10px; box-shadow:0 2px 5px rgba(0,0,0,0.05); text-align:left}
+        .dia-grupo{max-width:500px; margin:0 auto 30px auto; text-align:left}
         h1{font-size:26px; margin-bottom:30px}
-        h2{margin:0; font-size:20px; color:#000}
-        .nombre-capilla{font-size:13px; color:#666; margin-bottom:10px; display:block; border-bottom:2px solid #000; padding-bottom:5px}
+        h2{margin:0; border-bottom:2px solid #000; padding-bottom:5px; font-size:22px; text-transform: capitalize}
         .misa{background:#f9f9f9; padding:15px; margin:10px 0; border-radius:5px; border-left:6px solid #000}
         .hora{font-size:20px; font-weight:bold}
-        .fecha{font-size:14px; color:#666; margin-left:10px}
+        .term-sigla{font-size:14px; color:#fff; background:#000; padding:2px 6px; border-radius:3px; margin-left:10px; vertical-align:middle}
+        .capilla-nom{font-size:13px; color:#666; display:block; margin-top:4px}
         .obs{font-size:15px; color:#444; font-style:italic; margin-top:8px; padding-top:5px; border-top:1px solid #ddd}
     </style>
 </head>
@@ -24,22 +23,17 @@
     <div id="listado">Conectando...</div>
 
     <script>
-        // CONFIGURACIÓN (Quita los espacios aquí abajo)
-        var config = { 
-            databaseURL: "https://misas-aeropuerto-madrid-default-rtdb.europe-west1.firebasedatabase.app" 
-        };
-        
+        var config = { databaseURL: "https://misas-aeropuerto-madrid-default-rtdb.europe-west1.firebasedatabase.app" };
         firebase.initializeApp(config);
         var db = firebase.database();
         var hoy = new Date();
         var mesK = hoy.getFullYear() + "-" + (hoy.getMonth() + 1);
         var anoK = hoy.getFullYear();
 
-        // CONTADOR DE VISITAS
         db.ref('estadisticas/visitas/' + mesK).transaction(v => (v || 0) + 1);
         db.ref('estadisticas/visitas/' + anoK).transaction(v => (v || 0) + 1);
 
-        var nombres = { "T1": "Nuestra Señora de Loreto", "T2": "Nuestra Señora de Guadalupe", "T4": "Santiago Apóstol" };
+        var nombres = { "T1": "N. Sra. de Loreto", "T2": "N. Sra. de Guadalupe", "T4": "Santiago Apóstol" };
 
         db.ref('misas').on('value', function(snapshot) {
             var datos = snapshot.val();
@@ -47,37 +41,50 @@
             listadoDiv.innerHTML = "";
             var ahora = new Date();
 
-            // Convertir objeto en lista para poder ordenar
             var listaMisas = [];
             for (var id in datos) {
                 var m = datos[id];
-                m.fechaObjeto = new Date(m.f + "T" + m.h);
-                listaMisas.push(m);
+                m.dt = new Date(m.f + "T" + m.h);
+                // Filtro: No más de 30 min de antigüedad
+                if ((m.dt.getTime() + 1800000) > ahora.getTime()) {
+                    listaMisas.push(m);
+                }
             }
 
-            // ORDENAR: De la más cercana a la más lejana
-            listaMisas.sort(function(a, b) {
-                return a.fechaObjeto - b.fechaObjeto;
+            // Orden cronológico absoluto
+            listaMisas.sort((a, b) => a.dt - b.dt);
+
+            // Agrupar por fecha
+            var grupos = {};
+            listaMisas.forEach(m => {
+                if (!grupos[m.f]) grupos[m.f] = [];
+                grupos[m.f].push(m);
             });
 
-            ["T1", "T2", "T4"].forEach(function(t) {
-                var html = '<div class="terminal"><h2>Terminal ' + t + '</h2><span class="nombre-capilla">Capilla ' + nombres[t] + '</span>';
-                var hayMisasVisibles = false;
+            var fechasOrdenadas = Object.keys(grupos).sort();
 
-                listaMisas.forEach(function(m) {
-                    // Solo mostrar si es la terminal correcta y no han pasado más de 30 min
-                    if (m.c === t && (m.fechaObjeto.getTime() + 1800000) > ahora.getTime()) {
-                        hayMisasVisibles = true;
-                        html += '<div class="misa">' +
-                                '<span class="hora">' + m.h + 'h</span>' +
-                                '<span class="fecha">' + m.f + '</span>' +
-                                (m.o ? '<div class="obs">' + m.o + '</div>' : '') +
-                                '</div>';
-                    }
+            if (fechasOrdenadas.length === 0) {
+                listadoDiv.innerHTML = '<p style="color:#999; font-style:italic">No hay misas próximas programadas.</p>';
+                return;
+            }
+
+            fechasOrdenadas.forEach(function(f) {
+                var opciones = { weekday: 'long', day: 'numeric', month: 'long' };
+                var fechaLegible = new Date(f + "T00:00:00").toLocaleDateString('es-ES', opciones);
+                
+                var html = '<div class="dia-grupo"><h2>' + fechaLegible + '</h2>';
+                
+                grupos[f].forEach(function(m) {
+                    html += '<div class="misa">' +
+                            '<span class="hora">' + m.h + 'h</span>' +
+                            '<span class="term-sigla">' + m.c + '</span>' +
+                            '<span class="capilla-nom">Capilla ' + nombres[m.c] + '</span>' +
+                            (m.o ? '<div class="obs">' + m.o + '</div>' : '') +
+                            '</div>';
                 });
-
-                if (!hayMisasVisibles) html += '<p style="color:#999; font-style:italic; margin:15px 0">No hay misas próximas.</p>';
-                listadoDiv.innerHTML += html + '</div>';
+                
+                html += '</div>';
+                listadoDiv.innerHTML += html;
             });
         });
     </script>
