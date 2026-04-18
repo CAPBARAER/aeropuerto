@@ -26,36 +26,31 @@
         var config = { databaseURL: "https://misas-aeropuerto-madrid-default-rtdb.europe-west1.firebasedatabase.app" };
         firebase.initializeApp(config);
         var db = firebase.database();
+        var hoy = new Date();
+        var mesK = hoy.getFullYear() + "-" + (hoy.getMonth() + 1);
+        var anoK = hoy.getFullYear();
 
-        // Diccionario de nombres
-        var nombres = {
-            "T1": "Nuestra Señora de Loreto",
-            "T2": "Nuestra Señora de Guadalupe",
-            "T4": "Santiago Apóstol"
-        };
+        // CONTADOR DE VISITAS en "estadisticas"
+        db.ref('estadisticas/visitas/' + mesK).transaction(v => (v || 0) + 1);
+        db.ref('estadisticas/visitas/' + anoK).transaction(v => (v || 0) + 1);
+
+        var nombres = { "T1": "Nuestra Señora de Loreto", "T2": "Nuestra Señora de Guadalupe", "T4": "Santiago Apóstol" };
 
         db.ref('misas').on('value', function(snapshot) {
-            var datos = snapshot.val();
-            var listadoDiv = document.getElementById('listado');
+            var datos = snapshot.val(), listadoDiv = document.getElementById('listado'), ahora = new Date();
             listadoDiv.innerHTML = "";
-            var ahora = new Date();
-
             ["T1", "T2", "T4"].forEach(function(t) {
-                var html = '<div class="terminal"><h2>Terminal ' + t + '</h2>';
-                html += '<span class="nombre-capilla">Capilla ' + nombres[t] + '</span>';
-                var hayMisas = false;
-
+                var html = '<div class="terminal"><h2>Terminal ' + t + '</h2><span class="nombre-capilla">Capilla ' + nombres[t] + '</span>';
+                var hayM = false;
                 for (var id in datos) {
-                    var m = datos[id];
-                    var horaMisa = new Date(m.f + "T" + m.h);
-                    if (m.c === t && (horaMisa.getTime() + 1800000) > ahora.getTime()) {
-                        hayMisas = true;
-                        html += '<div class="misa"><span class="hora">' + m.h + 'h</span><span class="fecha">' + m.f + '</span>' +
-                                (m.o ? '<div class="obs">' + m.o + '</div>' : '') + '</div>';
+                    var m = datos[id]; var hM = new Date(m.f + "T" + m.h);
+                    if (m.c === t && (hM.getTime() + 1800000) > ahora.getTime()) {
+                        hayM = true;
+                        html += '<div class="misa"><span class="hora">' + m.h + 'h</span><span class="fecha">' + m.f + '</span>' + (m.o ? '<div class="obs">' + m.o + '</div>' : '') + '</div>';
                     }
                 }
-                if (!hayMisas) html += '<p style="color:#999; font-style:italic; margin:15px 0">No hay misas próximas.</p>';
-                listadoDiv.innerHTML += html;
+                if (!hayM) html += '<p style="color:#999; font-style:italic; margin:15px 0">No hay misas próximas.</p>';
+                listadoDiv.innerHTML += html + '</div>';
             });
         });
     </script>
