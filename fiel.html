@@ -59,7 +59,7 @@
                     var horaMisa = new Date(m.f + "T" + m.h);
                     
                     // FILTRO: Solo mostrar si la misa no ha terminado (margen de 30 min)
-                    if (m.c === t && (horaMisa.getTime() + 1800000) > ahora.getTime()) {
+                    if (m.c === t && (horaMisa.getTime() + 1000) > ahora.getTime()) {
                         hayMisasVisibles = true;
                         m.id = id;
                         misasProgramadas.push(m);
