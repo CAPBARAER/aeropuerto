@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Horarios de Misas</title>
+    <title>✝ Horarios Misas</title>
     <!-- Librerías de conexión (Quita los espacios) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -12,11 +12,13 @@
         .terminal{max-width:500px; margin:0 auto 20px auto; border:1px solid #eee; padding:15px; border-radius:10px; box-shadow:0 2px 5px rgba(0,0,0,0.05); text-align:left}
         h2{margin-top:0; border-bottom:2px solid #000; padding-bottom:5px; font-size:22px}
         .misa{background:#f9f9f9; padding:12px; margin:10px 0; border-radius:5px; border-left:5px solid #000}
-        .boton-cal{display:inline-block; margin-top:8px; font-size:12px; color:#555; text-decoration:none; border:1px solid #bbb; padding:5px 10px; border-radius:4px; background:#fff}
+        .boton-cal{display:inline-block; margin-top:8px; font-size:13px; color:#fff; text-decoration:none; background:#4285F4; padding:8px 12px; border-radius:4px; font-weight:bold}
+        #btnNoti{background:#000; color:#fff; padding:15px; border-radius:5px; margin-bottom:20px; cursor:pointer; border:none; width:100%; max-width:500px; font-weight:bold}
     </style>
 </head>
 <body>
     <h1>✝ Horarios de Misas</h1>
+    <button id="btnNoti" onclick="pedirPermiso()">🔔 ACTIVAR ALERTAS (15, 5 y 1 min)</button>
     <div id="listado">Conectando...</div>
 
     <script>
@@ -27,14 +29,26 @@
         
         firebase.initializeApp(config);
         var db = firebase.database();
+        var misasProgramadas = [];
+        var avisadas = {}; // Para no repetir avisos
 
-        // Leer datos y actualizar la pantalla solo cuando haya cambios
+        function pedirPermiso() {
+            Notification.requestPermission().then(perm => {
+                if (perm === 'granted') {
+                    alert("✅ Alertas activadas. Mantén esta pestaña abierta.");
+                    document.getElementById('btnNoti').innerText = "✅ ALERTAS ACTIVADAS";
+                    document.getElementById('btnNoti').style.background = "#4CAF50";
+                }
+            });
+        }
+
         db.ref('misas').on('value', function(snapshot) {
             var datos = snapshot.val();
             var listadoDiv = document.getElementById('listado');
             listadoDiv.innerHTML = "";
+            misasProgramadas = []; 
+
             var terminales = ["T1", "T2", "T4"];
-            
             terminales.forEach(function(t) {
                 var html = '<div class="terminal"><h2>Terminal ' + t + '</h2>';
                 var hayMisas = false;
@@ -42,17 +56,42 @@
                     var m = datos[id];
                     if (m.c === t) {
                         hayMisas = true;
-                        var fL = m.f.replace(/-/g,'');
-                        var hL = m.h.replace(':','');
-                        var linkCal = "https://google.com+" + t + "&dates=" + fL + "T" + hL + "00Z/" + fL + "T" + hL + "3000Z";
-                        html += '<div class="misa"><b>' + m.h + 'h</b> - ' + m.f + '<br><a href="' + linkCal + '" target="_blank" class="boton-cal">🗓️ Añadir a mi calendario</a></div>';
+                        m.id = id; // Guardamos el ID para controlar avisos
+                        misasProgramadas.push(m);
+                        var fG = m.f.replace(/-/g,'');
+                        var hG = m.h.replace(':','');
+                        var linkCal = "https://google.com" + t + "&dates=" + fG + "T" + hG + "00/" + fG + "T" + hG + "30";
+                        html += '<div class="misa"><b>' + m.h + 'h</b> - ' + m.f + '<br><a href="' + linkCal + '" target="_blank" class="boton-cal">🗓️ AGENDAR</a></div>';
                     }
                 }
-                if (!hayMisas) html += '<p style="color:#999; font-style:italic">No hay misas extraordinarias programadas.</p>';
+                if (!hayMisas) html += '<p style="color:#999; font-style:italic">No hay misas hoy.</p>';
                 html += '</div>';
                 listadoDiv.innerHTML += html;
             });
         });
+
+        // REVISOR DE TIEMPO (Cada 30 segundos)
+        setInterval(function() {
+            var ahora = new Date();
+            misasProgramadas.forEach(function(m) {
+                var horaMisa = new Date(m.f + "T" + m.h);
+                var difMin = Math.ceil((horaMisa - ahora) / 1000 / 60);
+                
+                // Tiempos de aviso: 15, 5 y 1 minuto
+                [15, 5, 1].forEach(function(minAviso) {
+                    var claveAviso = m.id + "_" + minAviso;
+                    if (difMin === minAviso && !avisadas[claveAviso]) {
+                        if (Notification.permission === "granted") {
+                            new Notification("✝ MISA EN " + m.c, {
+                                body: "Faltan " + minAviso + " minutos para el inicio.",
+                                icon: "https://github.io"
+                            });
+                            avisadas[claveAviso] = true; // Marcar como avisada
+                        }
+                    }
+                });
+            });
+        }, 30000);
     </script>
 </body>
 </html>
