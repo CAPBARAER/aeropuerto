@@ -1,19 +1,42 @@
-<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Sacerdote</title><style>body{font-family:sans-serif;background:#f9f9f9;padding:20px} input,select,button{display:block;width:100%;padding:15px;margin:10px 0;border:1px solid #ccc;border-radius:5px;font-size:16px} button{background:#000;color:#fff;border:none;font-weight:bold;cursor:pointer}</style></head><body><h2>Publicar Misa</h2>
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Sacerdote</title><style>body{font-family:sans-serif;background:#f9f9f9;padding:20px} input,select,button{display:block;width:100%;padding:15px;margin:10px 0;border:1px solid #ccc;border-radius:5px;font-size:16px} button{background:#000;color:#fff;border:none;font-weight:bold;cursor:pointer}</style></head><body>
+<h2>Publicar Misa</h2>
 <select id="c"><option value="T1">T1</option><option value="T2">T2</option><option value="T4">T4</option></select>
-<input type="date" id="f"><input type="time" id="h"><button id="btn" onclick="enviar()">PUBLICAR MISA</button><p id="msg" style="color:green;text-align:center;font-weight:bold"></p>
+<input type="date" id="f"><input type="time" id="h">
+<button id="btn" onclick="enviar()">PUBLICAR MISA</button>
+<p id="msg" style="color:green;text-align:center;font-weight:bold"></p>
+
 <script type="module">
 import { initializeApp } from "https://gstatic.com";
 import { getDatabase, ref, push } from "https://gstatic.com";
+
 const cfg = { databaseURL: "https://firebasedatabase.app" };
-const app = initializeApp(cfg); const db = getDatabase(app);
+const app = initializeApp(cfg); 
+const db = getDatabase(app);
+
 window.enviar = function() {
-  const c=document.getElementById('c').value, f=document.getElementById('f').value, h=document.getElementById('h').value;
-  if(!f || !h) { alert("Por favor, pon fecha y hora"); return; }
-  document.getElementById('btn').innerText = "ENVIANDO...";
-  push(ref(db, 'misas'), {c,f,h}).then(() => {
-    document.getElementById('msg').innerText = "Misa " + c + " publicada correctamente";
-    document.getElementById('btn').innerText = "PUBLICAR MISA";
-    document.getElementById('f').value = ""; document.getElementById('h').value = "";
-  }).catch((e) => { alert("Error de permiso: Revisa las Reglas en Firebase"); console.log(e); });
-}</script></body></html>
+  const c = document.getElementById('c').value;
+  const f = document.getElementById('f').value;
+  const h = document.getElementById('h').value;
+
+  if(!f || !h) { alert("Pon fecha y hora"); return; }
+
+  const btn = document.getElementById('btn');
+  btn.innerText = "ENVIANDO...";
+  btn.disabled = true;
+
+  push(ref(db, 'misas'), {c, f, h})
+    .then(() => {
+      document.getElementById('msg').innerText = "Misa " + c + " publicada correctamente";
+      btn.innerText = "PUBLICAR MISA";
+      btn.disabled = false;
+      document.getElementById('f').value = ""; 
+      document.getElementById('h').value = "";
+    })
+    .catch((err) => {
+      alert("ERROR: " + err.message);
+      btn.innerText = "REINTENTAR";
+      btn.disabled = false;
+    });
+};
+</script></body></html>
 
