@@ -12,6 +12,7 @@
         input, select, button{display:block; width:100%; padding:15px; margin:10px 0; border:1px solid #ccc; border-radius:5px; font-size:16px; box-sizing:border-box}
         button{background:#000; color:#fff; border:none; font-weight:bold; cursor:pointer}
         .item-misa{background:#eee; margin:10px 0; padding:12px; display:flex; justify-content:space-between; align-items:center; border-radius:5px; text-align:left}
+        .info{font-size:14px; line-height:1.4}
         .btn-borrar{background:#ff4444; width:auto; padding:8px 12px; margin:0; font-size:14px}
         .stats-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:12px; text-align:left; margin-top:10px}
         .stat-val{font-size:18px; font-weight:bold; display:block}
@@ -21,8 +22,8 @@
     <div class="box">
         <h2>✝ Publicar Misa</h2>
         <select id="c">
-            <option value="T1">T1 - Nuestra Señora de Loreto</option>
-            <option value="T2">T2 - Nuestra Señora de Guadalupe</option>
+            <option value="T1">T1 - N. Sra. Loreto</option>
+            <option value="T2">T2 - N. Sra. Guadalupe</option>
             <option value="T4">T4 - Santiago Apóstol</option>
         </select>
         <input type="date" id="f"><input type="time" id="h">
@@ -30,14 +31,12 @@
         <button onclick="publicar()">PUBLICAR MISA</button>
     </div>
 
-
-
     <div class="box">
-        <h3>Misas Activas</h3>
+        <h3>Misas Activas (Ordenadas)</h3>
         <div id="listaSace">Cargando...</div>
     </div>
 
-        <div class="box">
+    <div class="box">
         <h3>📊 Estadísticas Históricas</h3>
         <div class="stats-grid">
             <div>Misas Mes: <span class="stat-val" id="st-mm">0</span></div>
@@ -46,7 +45,7 @@
             <div>Visitas Año: <span class="stat-val" id="st-va">0</span></div>
         </div>
     </div>
-    
+
     <script>
         var config = { databaseURL: "https://misas-aeropuerto-madrid-default-rtdb.europe-west1.firebasedatabase.app" };
         firebase.initializeApp(config);
@@ -58,18 +57,13 @@
         function publicar() {
             var c = document.getElementById('c').value, f = document.getElementById('f').value, h = document.getElementById('h').value, o = document.getElementById('obs').value;
             if(!f || !h) return alert("Faltan datos");
-            
             db.ref('misas').push({c:c, f:f, h:h, o:o});
-            
-            // Sumar a Estadísticas
             db.ref('estadisticas/misas/' + mesKey).transaction(v => (v || 0) + 1);
             db.ref('estadisticas/misas/' + anoKey).transaction(v => (v || 0) + 1);
-            
             alert("✅ Publicada");
             document.getElementById('obs').value = "";
         }
 
-        // Leer Estadísticas
         db.ref('estadisticas').on('value', function(snap) {
             var s = snap.val() || {misas:{}, visitas:{}};
             document.getElementById('st-mm').innerText = s.misas[mesKey] || 0;
@@ -81,15 +75,28 @@
         db.ref('misas').on('value', function(snap) {
             var datos = snap.val(), div = document.getElementById('listaSace'), ahora = new Date();
             div.innerHTML = "";
+            
+            var listaOrdenada = [];
             for (var id in datos) {
                 var m = datos[id];
-                var hM = new Date(m.f + "T" + m.h);
-                if ((hM.getTime() + 1800000) > ahora.getTime()) {
-                    div.innerHTML += '<div class="item-misa"><span><b>' + m.c + '</b> | ' + m.h + 'h<br>' + m.f + '</span>' +
-                        '<button class="btn-borrar" onclick="borrar(\'' + id + '\')">🗑️</button></div>';
-                }
+                m.id = id;
+                m.fechaObjeto = new Date(m.f + "T" + m.h);
+                listaOrdenada.push(m);
             }
+
+            // Ordenar por tiempo
+            listaOrdenada.sort(function(a, b) { return a.fechaObjeto - b.fechaObjeto; });
+
+            listaOrdenada.forEach(function(m) {
+                if ((m.fechaObjeto.getTime() + 1800000) > ahora.getTime()) {
+                    div.innerHTML += '<div class="item-misa">' +
+                        '<div class="info"><b>' + m.c + '</b> | ' + m.h + 'h<br>' + m.f + '<br><small>' + (m.o || "") + '</small></div>' +
+                        '<button class="btn-borrar" onclick="borrar(\'' + m.id + '\')">🗑️</button></div>';
+                }
+            });
+            if(div.innerHTML === "") div.innerHTML = "<p style='color:#999'>No hay misas activas.</p>";
         });
+
         function borrar(id) { if(confirm("¿Borrar?")) db.ref('misas/' + id).remove(); }
     </script>
 </body>
