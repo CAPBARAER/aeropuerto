@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sacerdote - Gestión</title>
+    <!-- Librerías (Quita los espacios al pegar) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
@@ -11,7 +12,8 @@
         .box{max-width:450px; margin:0 auto 20px; background:#fff; padding:20px; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,0.1)}
         input, select, button{display:block; width:100%; padding:15px; margin:10px 0; border:1px solid #ccc; border-radius:5px; font-size:16px; box-sizing:border-box}
         button{background:#000; color:#fff; border:none; font-weight:bold; cursor:pointer}
-        .item-misa{background:#eee; margin:10px 0; padding:10px; display:flex; justify-content:space-between; align-items:center; border-radius:5px; text-align:left}
+        .item-misa{background:#eee; margin:10px 0; padding:12px; display:flex; justify-content:space-between; align-items:center; border-radius:5px; text-align:left}
+        .info{font-size:14px; line-height:1.4}
         .btn-borrar{background:#ff4444; width:auto; padding:8px 12px; margin:0; font-size:14px}
     </style>
 </head>
@@ -20,15 +22,20 @@
         <h2>✝ Publicar Misa</h2>
         <select id="c"><option value="T1">Terminal T1</option><option value="T2">Terminal T2</option><option value="T4">Terminal T4</option></select>
         <input type="date" id="f"><input type="time" id="h">
-        <input type="text" id="obs" placeholder="Observaciones opcionales (ej: Capilla P2)">
+        <input type="text" id="obs" placeholder="Observaciones opcionales">
         <button onclick="publicar()">PUBLICAR MISA</button>
     </div>
+
     <div class="box">
-        <h3>Misas Activas</h3>
+        <h3>Misas Activas y Futuras</h3>
         <div id="listaSace">Cargando...</div>
     </div>
+
     <script>
-        var config = { databaseURL: "https://misas-aeropuerto-madrid-default-rtdb.europe-west1.firebasedatabase.app" };
+        // CONFIGURACIÓN (Quita los espacios)
+        var config = { 
+            databaseURL: "https://misas-aeropuerto-madrid-default-rtdb.europe-west1.firebasedatabase.app" 
+        };
         firebase.initializeApp(config);
         var db = firebase.database();
 
@@ -36,21 +43,33 @@
             var cap = document.getElementById('c').value, fec = document.getElementById('f').value, hor = document.getElementById('h').value, obs = document.getElementById('obs').value;
             if(!fec || !hor) return alert("Faltan datos");
             db.ref('misas').push({c:cap, f:fec, h:hor, o:obs});
-            alert("✅ Publicada");
+            alert("✅ Publicada correctamente");
             document.getElementById('obs').value = "";
         }
 
         db.ref('misas').on('value', function(snap) {
             var datos = snap.val(), div = document.getElementById('listaSace');
             div.innerHTML = "";
+            var ahora = new Date();
+
             for (var id in datos) {
                 var m = datos[id];
-                div.innerHTML += '<div class="item-misa"><span><b>' + m.c + '</b>: ' + m.h + 'h<br><small>' + (m.o || "") + '</small></span>' +
-                    '<button class="btn-borrar" onclick="borrar(\'' + id + '\')">🗑️</button></div>';
+                var horaMisa = new Date(m.f + "T" + m.h);
+
+                // FILTRO: Solo mostrar en gestión si no han pasado más de 30 min
+                if ((horaMisa.getTime() + 1800000) > ahora.getTime()) {
+                    div.innerHTML += '<div class="item-misa">' +
+                        '<div class="info"><b>' + m.c + '</b> | ' + m.h + 'h<br>' + m.f + '<br><small>' + (m.o || "") + '</small></div>' +
+                        '<button class="btn-borrar" onclick="borrar(\'' + id + '\')">🗑️</button>' +
+                        '</div>';
+                }
             }
+            if(div.innerHTML === "") div.innerHTML = "<p style='color:#999'>No hay misas activas.</p>";
         });
 
-        function borrar(id) { if(confirm("¿Borrar?")) db.ref('misas/' + id).remove(); }
+        function borrar(id) { 
+            if(confirm("¿Seguro que quieres eliminar esta misa?")) db.ref('misas/' + id).remove(); 
+        }
     </script>
 </body>
 </html>
