@@ -59,21 +59,29 @@
         var anoKey = hoy.getFullYear();
         var CLAVE_SEGURA = "MADRID2033";
 
-        function publicar() {
-            var c = document.getElementById('c').value, f = document.getElementById('f').value, h = document.getElementById('h').value, o = document.getElementById('obs').value;
-            if(!f || !h) return alert("Faltan datos");
-            
-            // Publicar con clave de validación
-            db.ref('misas').push({c:c, f:f, h:h, o:o, auth: CLAVE_SEGURA}, function(error){
-                if(error) alert("Error de permisos: " + error.message);
-                else {
-                    db.ref('estadisticas/misas/' + mesKey).transaction(v => (v || 0) + 1);
-                    db.ref('estadisticas/misas/' + anoKey).transaction(v => (v || 0) + 1);
-                    alert("✅ Publicada");
-                    document.getElementById('obs').value = "";
-                }
-            });
+function publicar() {
+    var c = document.getElementById('c').value, f = document.getElementById('f').value, h = document.getElementById('h').value, o = document.getElementById('obs').value;
+    if(!f || !h) return alert("Faltan datos");
+    
+    // Metemos la clave MADRID2033 directamente en el envío
+    db.ref('misas').push({
+        c: c, 
+        f: f, 
+        h: h, 
+        o: o, 
+        auth: "MADRID2033" 
+    }, function(error) {
+        if(error) {
+            alert("Error de permisos: " + error.message);
+        } else {
+            // Si funciona, sumamos a las estadísticas
+            db.ref('estadisticas/misas/' + mesKey).transaction(v => (v || 0) + 1);
+            db.ref('estadisticas/misas/' + anoKey).transaction(v => (v || 0) + 1);
+            alert("✅ Publicada correctamente");
+            document.getElementById('obs').value = "";
         }
+    });
+}
 
         db.ref('estadisticas').on('value', function(snap) {
             var s = snap.val() || {misas:{}, visitas:{}};
