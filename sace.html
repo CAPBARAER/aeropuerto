@@ -30,7 +30,14 @@
         <button onclick="publicar()">PUBLICAR MISA</button>
     </div>
 
+
+
     <div class="box">
+        <h3>Misas Activas</h3>
+        <div id="listaSace">Cargando...</div>
+    </div>
+
+        <div class="box">
         <h3>📊 Estadísticas Históricas</h3>
         <div class="stats-grid">
             <div>Misas Mes: <span class="stat-val" id="st-mm">0</span></div>
@@ -39,12 +46,7 @@
             <div>Visitas Año: <span class="stat-val" id="st-va">0</span></div>
         </div>
     </div>
-
-    <div class="box">
-        <h3>Misas Activas</h3>
-        <div id="listaSace">Cargando...</div>
-    </div>
-
+    
     <script>
         var config = { databaseURL: "https://misas-aeropuerto-madrid-default-rtdb.europe-west1.firebasedatabase.app" };
         firebase.initializeApp(config);
