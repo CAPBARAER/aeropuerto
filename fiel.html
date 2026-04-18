@@ -47,7 +47,7 @@
                     var horaMisa = new Date(m.f + "T" + m.h);
                     
                     // Solo mostrar si no han pasado más de 30 min del inicio
-                    if (m.c === t && (horaMisa.getTime() + 1000) > ahora.getTime()) {
+                    if (m.c === t && (horaMisa.getTime() + 1800000) > ahora.getTime()) {
                         hayMisasVisibles = true;
                         html += '<div class="misa">' +
                                 '<span class="hora">' + m.h + 'h</span>' +
