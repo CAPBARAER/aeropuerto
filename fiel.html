@@ -89,8 +89,11 @@
     <div id="listado">Conectando...</div>
 
     <script>
-        // CONFIGURACIÓN DE FIREBASE
-        var firebaseConfig = { databaseURL: "https://misas-aeropuerto-madrid-default-rtdb.europe-west1.firebasedatabase.app" };
+        // CONFIGURACIÓN DE FIREBASE (CORREGIDO: Añadido projectId)
+        var firebaseConfig = {
+            databaseURL: "https://misas-aeropuerto-madrid-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "misas-aeropuerto-madrid" // <-- ¡IMPORTANTE! Se añadió tu Project ID
+        };
         firebase.initializeApp(firebaseConfig);
         var db = firebase.database();
 
