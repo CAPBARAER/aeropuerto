@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sacerdote - Gestión Total</title>
+    <title>Sacerdote - Gestión y Estadísticas</title>
     <!-- Librerías (Quita los espacios al pegar) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -17,7 +17,7 @@
         .item-misa{background:#eee; margin:10px 0; padding:12px; display:flex; justify-content:space-between; align-items:center; border-radius:5px; text-align:left}
         .btn-borrar{background:#ff4444; width:auto; padding:8px 12px; margin:0; font-size:14px}
         .stats-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:12px; text-align:left; margin-top:10px}
-        .stat-val{font-size:18px; font-weight:bold; display:block}
+        .stat-val{font-size:18px; font-weight:bold; display:block; color:#000}
     </style>
 </head>
 <body>
@@ -37,13 +37,13 @@
         <button id="btnPub" onclick="publicar()">PUBLICAR MISA</button>
     </div>
 
-    <!-- 2. GESTIÓN DE MISAS ACTIVAS -->
+    <!-- 2. GESTIÓN DE MISAS ACTIVAS (ORDENADAS) -->
     <div class="box">
         <h3>Misas Activas</h3>
-        <div id="listaSace">Cargando...</div>
+        <div id="listaSace">Cargando misas...</div>
     </div>
 
-    <!-- 3. ESTADÍSTICAS HISTÓRICAS -->
+    <!-- 3. ESTADÍSTICAS AL FINAL DEL TODO -->
     <div class="box">
         <h3>📊 Estadísticas Históricas</h3>
         <div class="stats-grid">
@@ -55,9 +55,7 @@
     </div>
 
     <script>
-        var config = { 
-            databaseURL: "https://misas-aeropuerto-madrid-default-rtdb.europe-west1.firebasedatabase.app" 
-        };
+        var config = { databaseURL: "https://misas-aeropuerto-madrid-default-rtdb.europe-west1.firebasedatabase.app" };
         firebase.initializeApp(config);
         var db = firebase.database();
         var hoy = new Date();
@@ -70,24 +68,32 @@
             if(!clave) return alert("Debe introducir la clave de seguridad");
             
             db.ref('misas').push({c:c, f:f, h:h, o:o, auth: clave}, function(err){
-                if(err) alert("❌ Error de seguridad: Clave incorrecta");
+                if(err) alert("❌ Error: Clave incorrecta");
                 else {
                     db.ref('estadisticas/misas/' + mesKey).transaction(v => (v || 0) + 1);
                     db.ref('estadisticas/misas/' + anoKey).transaction(v => (v || 0) + 1);
-                    alert("✅ Misa publicada correctamente");
+                    alert("✅ Publicada");
                     document.getElementById('obs').value = "";
                 }
             });
         }
 
+        // Lectura de estadísticas (Corregida)
         db.ref('estadisticas').on('value', function(snap) {
-            var s = snap.val() || {misas:{}, visitas:{}};
-            document.getElementById('st-mm').innerText = (s.misas && s.misas[mesKey]) || 0;
-            document.getElementById('st-ma').innerText = (s.misas && s.misas[anoKey]) || 0;
-            document.getElementById('st-vm').innerText = (s.visitas && s.visitas[mesKey]) || 0;
-            document.getElementById('st-va').innerText = (s.visitas && s.visitas[anoKey]) || 0;
+            var s = snap.val();
+            if (s) {
+                if (s.misas) {
+                    document.getElementById('st-mm').innerText = s.misas[mesKey] || 0;
+                    document.getElementById('st-ma').innerText = s.misas[anoKey] || 0;
+                }
+                if (s.visitas) {
+                    document.getElementById('st-vm').innerText = s.visitas[mesKey] || 0;
+                    document.getElementById('st-va').innerText = s.visitas[anoKey] || 0;
+                }
+            }
         });
 
+        // Listado de misas ordenado
         db.ref('misas').on('value', function(snap) {
             var datos = snap.val(), div = document.getElementById('listaSace'), ahora = new Date();
             div.innerHTML = "";
@@ -109,8 +115,7 @@
             });
             if(div.innerHTML === "") div.innerHTML = "<p style='color:#999'>No hay misas activas.</p>";
         });
-
-        function borrar(id) { if(confirm("¿Seguro que desea eliminar esta misa?")) db.ref('misas/' + id).remove(); }
+        function borrar(id) { if(confirm("¿Seguro que desea borrar esta misa?")) db.ref('misas/' + id).remove(); }
     </script>
 </body>
 </html>
