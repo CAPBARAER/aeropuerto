@@ -175,30 +175,43 @@
             // Registrar el Service Worker (si no se ha hecho ya)
             // Es CRUCIAL que firebase-messaging-sw.js esté en la raíz de tu dominio
             if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('firebase-messaging-sw.js')
-                    .then((registration) => {
-                        console.log('Service Worker registrado con éxito:', registration);
-                        // Comprobar el estado actual de las notificaciones al cargar la página
-                        if (Notification.permission === 'granted') {
-                            updateNotificationStatus('Activadas (ya tienes permiso).');
-                            enableNotificationsBtn.disabled = true;
-                            messaging.getToken().then(currentToken => {
-                                if (currentToken) {
-                                    fcmTokensRef.child(currentToken).set(true); // Asegurar que el token esté en la DB
-                                }
-                            });
-                        } else if (Notification.permission === 'denied') {
-                            updateNotificationStatus('Bloqueadas (permiso denegado).');
-                            enableNotificationsBtn.disabled = true;
-                        } else {
-                            updateNotificationStatus('Pulsa el botón para activar.');
-                        }
-                    })
-                    .catch((error) => {
-                        console.error('Error al registrar el Service Worker:', error);
-                        updateNotificationStatus('Error al inicializar notificaciones.');
-                        enableNotificationsBtn.disabled = true;
-                    });
+              // 1. Registramos el Service Worker con la ruta y el alcance correctos para GitHub Pages
+navigator.serviceWorker.register('/aeropuerto/firebase-messaging-sw.js', { scope: '/aeropuerto/' })
+    .then((registration) => {
+        console.log('Service Worker registrado con éxito:', registration);
+
+        // 2. ¡CLAVE!: Le decimos a Firebase que use ESTE service worker y no otro
+        messaging.useServiceWorker(registration);
+
+        if (Notification.permission === 'granted') {
+            updateNotificationStatus('Activadas (ya tienes permiso).');
+            enableNotificationsBtn.disabled = true;
+
+            // 3. Pedimos el token usando tu clave VAPID (sustituye 'TU_CLAVE_VAPID' por la tuya)
+            messaging.getToken({ 
+                vapidKey: 'BKIMsVRb3mokHvxLPLW1eIULOcbbywC9M_Z0-1MNblfFe2TDDtsT9MtbWSyAaSHOl-S4Mp9LScJVl0pYJk0cQ0s' // <--- PEGA AQUÍ TU CLAVE COMPLETA de la imagen a34e3b
+            }).then((currentToken) => {
+                if (currentToken) {
+                    console.log('Token generado:', currentToken);
+                    fcmTokensRef.child(currentToken).set(true);
+                } else {
+                    console.warn('No se pudo obtener el token. Revisa los permisos.');
+                }
+            }).catch((err) => {
+                console.error('Error al obtener el token:', err);
+            });
+        } else if (Notification.permission === 'denied') {
+            updateNotificationStatus('Bloqueadas (permiso denegado).');
+            enableNotificationsBtn.disabled = true;
+        } else {
+            updateNotificationStatus('Pulsa el botón para activar.');
+        }
+    })
+    .catch((error) => {
+        console.error('Error al registrar el Service Worker:', error);
+        updateNotificationStatus('Error al inicializar notificaciones.');
+        enableNotificationsBtn.disabled = true;
+    });
             }
 
             // Manejar mensajes en primer plano (cuando la web está activa)
