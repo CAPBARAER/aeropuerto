@@ -105,33 +105,21 @@
         // Condición de compatibilidad más completa
         if ('serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window) {
             
-            // Registra el Service Worker con la ruta absoluta y el alcance explícito para GitHub Pages
-            navigator.serviceWorker.register('/aeropuerto/firebase-messaging-sw.js', { scope: '/aeropuerto/' })
-                .then((registration) => {
-                    console.log('Service Worker registrado:', registration);
-                    messaging.useServiceWorker(registration); // Asocia Messaging con este SW
-
-                    const obtenerTokenYGuardar = () => {
-                        messaging.getToken({ 
-                            // Tu clave VAPID pública obtenida de la consola de Firebase
-                            vapidKey: 'BKIMsVRb3mokhvxLPLW1eIULOcbbywC9M_Z0-1MNb1fFe2TDDtsT9MtbWSyAaSHO1-S4Mp9LScJV10pYJk0cQ0s' 
-                        }).then((currentToken) => {
-                            if (currentToken) {
-                                console.log('¡TOKEN GENERADO!: ', currentToken);
-                                fcmTokensRef.child(currentToken).set(true); // Guarda el token en la DB
-                                updateNotificationStatus('Activadas. Recibirás avisos.');
-                                enableNotificationsBtn.disabled = true; // Desactiva el botón
-                            } else {
-                                console.warn('No se pudo obtener el token de registro. Permiso denegado o problemas con el SW.');
-                                updateNotificationStatus('Error al obtener permiso de envío.');
-                                enableNotificationsBtn.disabled = true;
-                            }
-                        }).catch((err) => {
-                            console.error('Error al obtener token:', err);
-                            updateNotificationStatus('Error al obtener permiso de envío.');
-                            enableNotificationsBtn.disabled = true; // Desactiva el botón en caso de error
-                        });
-                    };
+// Esperamos a que el SW esté listo antes de pedir nada a Firebase
+navigator.serviceWorker.register('/aeropuerto/firebase-messaging-sw.js', { scope: '/aeropuerto/' })
+    .then((registration) => {
+        console.log('Service Worker registrado:', registration);
+        
+        // ESTA LÍNEA ES CLAVE: Espera a que el SW esté activo
+        navigator.serviceWorker.ready.then((serviceWorkerRegistration) => {
+            messaging.useServiceWorker(serviceWorkerRegistration);
+            
+            // Ahora que el SW está activo, podemos verificar permisos y pedir el token
+            if (Notification.permission === 'granted') {
+                obtenerTokenYGuardar();
+            }
+        });
+    });
 
                     // Verifica el estado inicial de permisos al cargar la página
                     if (Notification.permission === 'granted') {
