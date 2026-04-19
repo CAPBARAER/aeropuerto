@@ -8,18 +8,38 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
         body{font-family:sans-serif; background:#fff; padding:20px; color:#333; text-align:center}
+        .header-content { display: flex; align-items: center; justify-content: center; margin-bottom: 20px; }
+        .cross-icon { font-size: 80px; color: #8B0000; margin-right: 15px; } /* Cruz más grande y colorida */
+        h1{font-size: 52px; margin: 0; line-height: 1; text-transform: uppercase;} /* Texto 100% más grande */
         .dia-grupo{max-width:500px; margin:0 auto 30px auto; text-align:left}
-        h1{font-size:26px; margin-bottom:30px}
         h2{margin:0; border-bottom:2px solid #000; padding-bottom:5px; font-size:22px; text-transform: capitalize}
         .misa{background:#f9f9f9; padding:15px; margin:10px 0; border-radius:5px; border-left:6px solid #000}
         .hora{font-size:20px; font-weight:bold}
         .term-sigla{font-size:14px; color:#fff; background:#000; padding:2px 6px; border-radius:3px; margin-left:10px; vertical-align:middle}
         .capilla-nom{font-size:13px; color:#666; display:block; margin-top:4px}
         .obs{font-size:15px; color:#444; font-style:italic; margin-top:8px; padding-top:5px; border-top:1px solid #ddd}
+        .info-note {
+            font-size: 0.8em; /* Aproximadamente 30% más pequeño que el tamaño de fuente base, que es lo que suele ser un `em` o `rem` para notas */
+            color: #666;
+            margin-top: 20px;
+            padding: 10px;
+            background: #e0e0e0;
+            border-left: 5px solid #000;
+            text-align: left;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
     </style>
 </head>
 <body>
-    <h1>✝ Horarios de Misas</h1>
+    <div class="header-content">
+        <span class="cross-icon">✝</span>
+        <h1>Horarios de Misas</h1>
+    </div>
+    <p class="info-note">
+        Nota: En esta página se publican misas puntuales con carácter extraordinario. Dado que es celebrada por sacerdotes en tránsito, las horas son estimadas. Se recomienda prestar atención a posibles modificaciones y acudir antes a la capilla.
+    </p>
     <div id="listado">Conectando...</div>
 
     <script>
