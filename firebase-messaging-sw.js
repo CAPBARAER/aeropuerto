@@ -3,11 +3,11 @@ importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js');
 importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js');
 
 // Inicializa Firebase en el Service Worker.
-// Solo necesitamos el app.js del SDK de FCM para manejar mensajes.
-// La configuración real de tu proyecto Firebase (API key, project ID, etc.)
-// se pasará implícitamente desde el fiel.html que lo registra.
-// Aquí puedes inicializar firebase con un objeto vacío o solo con tu app config básica.
-firebase.initializeApp({});
+// ¡IMPORTANTE! Hemos añadido tu projectId aquí.
+const firebaseConfig = {
+    projectId: "misas-aeropuerto-madrid" // <-- ¡Aquí está la corrección!
+};
+firebase.initializeApp(firebaseConfig);
 
 // Obtén una referencia al objeto de mensajería (Messaging)
 const messaging = firebase.messaging();
