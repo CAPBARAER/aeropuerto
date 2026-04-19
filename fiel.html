@@ -176,37 +176,41 @@
             // Es CRUCIAL que firebase-messaging-sw.js esté en la raíz de tu dominio
             if ('serviceWorker' in navigator) {
               // 1. Registramos el Service Worker con la ruta y el alcance correctos para GitHub Pages
-navigator.serviceWorker.register('/aeropuerto/firebase-messaging-sw.js', { scope: '/aeropuerto/' })
-    .then((registration) => {
-        console.log('Service Worker registrado con éxito:', registration);
-
-        // 2. ¡CLAVE!: Le decimos a Firebase que use ESTE service worker y no otro
-        messaging.useServiceWorker(registration);
-
-        if (Notification.permission === 'granted') {
-            updateNotificationStatus('Activadas (ya tienes permiso).');
-            enableNotificationsBtn.disabled = true;
-
-            // 3. Pedimos el token usando tu clave VAPID (sustituye 'TU_CLAVE_VAPID' por la tuya)
-            messaging.getToken({ 
-                vapidKey: 'BKIMsVRb3mokHvxLPLW1eIULOcbbywC9M_Z0-1MNblfFe2TDDtsT9MtbWSyAaSHOl-S4Mp9LScJVl0pYJk0cQ0s' // <--- PEGA AQUÍ TU CLAVE COMPLETA de la imagen a34e3b
-            }).then((currentToken) => {
-                if (currentToken) {
-                    console.log('Token generado:', currentToken);
-                    fcmTokensRef.child(currentToken).set(true);
-                } else {
-                    console.warn('No se pudo obtener el token. Revisa los permisos.');
-                }
-            }).catch((err) => {
-                console.error('Error al obtener el token:', err);
-            });
-        } else if (Notification.permission === 'denied') {
-            updateNotificationStatus('Bloqueadas (permiso denegado).');
-            enableNotificationsBtn.disabled = true;
-        } else {
-            updateNotificationStatus('Pulsa el botón para activar.');
-        }
-    })
+    navigator.serviceWorker.register('/aeropuerto/firebase-messaging-sw.js', { scope: '/aeropuerto/' })
+        .then((registration) => {
+            console.log('Service Worker registrado con éxito:', registration);
+            // 2. ¡CLAVE!: Obligamos a Firebase a usar este registro y no el de la raíz
+            messaging.useServiceWorker(registration);
+            // 3. Verificamos el estado de las notificaciones
+            if (Notification.permission === 'granted') {
+                updateNotificationStatus('Activadas (ya tienes permiso).');
+                enableNotificationsBtn.disabled = true;
+                // 4. Pedimos el token usando tu clave VAPID
+                messaging.getToken({ 
+                    vapidKey: 'BKIMsVRb3mokhvxLPLW1eIULOcbbywC9M_Z0-1MNb1fFe2TDDtsT9MtbWSyAaSHO1-S4Mp9LScJV10pYJk0cQ0s' 
+                }).then((currentToken) => {
+                    if (currentToken) {
+                        console.log('¡TOKEN GENERADO!: ', currentToken);
+                        // Guardamos en la base de datos
+                        fcmTokensRef.child(currentToken).set(true);
+                    } else {
+                        console.warn('No se pudo obtener el token.');
+                    }
+                }).catch((err) => {
+                    console.error('Error al obtener el token:', err);
+                });
+            } else if (Notification.permission === 'denied') {
+                updateNotificationStatus('Bloqueadas (permiso denegado).');
+                enableNotificationsBtn.disabled = true;
+            } else {
+                updateNotificationStatus('Pulsa el botón para activar.');
+            }
+        })
+        .catch((error) => {
+            console.error('Error al registrar el Service Worker:', error);
+            updateNotificationStatus('Error al inicializar notificaciones.');
+        });
+            })
     .catch((error) => {
         console.error('Error al registrar el Service Worker:', error);
         updateNotificationStatus('Error al inicializar notificaciones.');
