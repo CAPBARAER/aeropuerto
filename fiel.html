@@ -8,7 +8,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <!-- Firebase Realtime Database -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <!-- Firebase Messaging (NUEVO SDK) -->
+    <!-- Firebase Messaging -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
     <style>
         body{font-family:sans-serif; background:#fff; padding:20px; color:#333; text-align:center}
@@ -24,7 +24,7 @@
         .capilla-nom{font-size:13px; color:#666; display:block; margin-top:4px}
         .obs{font-size:15px; color:#444; font-style:italic; margin-top:8px; padding-top:5px; border-top:1px solid #ddd}
         .info-note {
-            font-size: 1.2em; /* Último tamaño acordado */
+            font-size: 1.2em;
             color: #666;
             margin-top: 20px;
             padding: 10px;
@@ -35,7 +35,6 @@
             margin-left: auto;
             margin-right: auto;
         }
-        /* ESTILOS PARA NOTIFICACIONES (NUEVOS) */
         .notification-section {
             max-width: 500px;
             margin: 20px auto;
@@ -45,7 +44,7 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
         .notification-btn {
-            background-color: #4CAF50; /* Green */
+            background-color: #4CAF50;
             color: white;
             padding: 12px 20px;
             border: none;
@@ -55,18 +54,9 @@
             margin-top: 10px;
             display: inline-block;
         }
-        .notification-btn:hover {
-            background-color: #45a049;
-        }
-        .notification-btn:disabled {
-            background-color: #ccc;
-            cursor: not-allowed;
-        }
-        .notification-status {
-            margin-top: 10px;
-            font-size: 0.9em;
-            color: #555;
-        }
+        .notification-btn:hover { background-color: #45a049; }
+        .notification-btn:disabled { background-color: #ccc; cursor: not-allowed; }
+        .notification-status { margin-top: 10px; font-size: 0.9em; color: #555; }
     </style>
 </head>
 <body>
@@ -79,7 +69,6 @@
         Nota: En esta página se publican sólo las misas puntuales con carácter extraordinario. Las misas de la capellanía se deben consultar en los canales dedicados a ello. Dado que estas misas extraordinarias son celebradas por sacerdotes en tránsito, las horas son estimadas. Se recomienda prestar atención a posibles modificaciones y acudir antes a la capilla.
     </p>
 
-    <!-- Sección para activar notificaciones (NUEVO HTML) -->
     <div class="notification-section">
         <h3>Recibe Avisos Instantáneos</h3>
         <button id="enable-notifications-btn" class="notification-btn">Activar Notificaciones de Misas</button>
@@ -89,7 +78,7 @@
     <div id="listado">Conectando...</div>
 
     <script>
-        // CONFIGURACIÓN COMPLETA DE FIREBASE
+        // CONFIGURACIÓN FIREBASE
         var firebaseConfig = {
             apiKey: "AIzaSyChBgp9zJMITMXAGq7HJuTFekUW2mKquaE",
             authDomain: "misas-aeropuerto-madrid.firebaseapp.com",
@@ -100,141 +89,102 @@
             appId: "1:3033346562:web:ffc40f202d4b6c791eed1b"
         };
         firebase.initializeApp(firebaseConfig);
-        var db = firebase.database();
-
-        // Referencia a la colección de tokens FCM en la Realtime Database (NUEVO)
+        const db = firebase.database();
+        // NOTA: firebase.messaging() debe inicializarse DESPUÉS de firebase.initializeApp()
+        const messaging = firebase.messaging(); 
         const fcmTokensRef = db.ref('fcmTokens');
 
-        // CONFIGURACIÓN E INICIALIZACIÓN DE CLOUD MESSAGING (NUEVO JS)
-        var messaging;
         const enableNotificationsBtn = document.getElementById('enable-notifications-btn');
         const notificationStatus = document.getElementById('notification-status');
 
-        // Función para actualizar el texto de estado de las notificaciones
         function updateNotificationStatus(text) {
-            if (notificationStatus) {
-                notificationStatus.innerText = 'Estado de las notificaciones: ' + text;
-            }
+            if (notificationStatus) notificationStatus.innerText = 'Estado de las notificaciones: ' + text;
         }
 
-        // Iniciar la lógica de FCM si el navegador lo soporta
+        // LÓGICA DE SERVICE WORKER Y NOTIFICACIONES
+        // Condición de compatibilidad más completa
         if ('serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window) {
-            messaging = firebase.messaging();
-            // ¡IMPORTANTE! Reemplaza con la clave pública VAPID de tu consola de Firebase
-            // (La obtuviste en el Paso 1 de la configuración de Firebase)
-            messaging.usePublicVapidKey('BKIMsVRb3mokHvxLPLW1eIULOcbbywC9M_Z0-1MNblfFe2TDDtsT9MtbWSyAaSHOl-S4Mp9LScJVl0pYJk0cQ0s'); 
+            
+            // Registra el Service Worker con la ruta absoluta y el alcance explícito para GitHub Pages
+            navigator.serviceWorker.register('/aeropuerto/firebase-messaging-sw.js', { scope: '/aeropuerto/' })
+                .then((registration) => {
+                    console.log('Service Worker registrado:', registration);
+                    messaging.useServiceWorker(registration); // Asocia Messaging con este SW
 
-            // Lógica para pedir permiso y obtener/guardar el token
-            async function requestNotificationPermission() {
-                if (!messaging) {
-                    updateNotificationStatus('Messaging no inicializado.');
-                    return;
-                }
+                    const obtenerTokenYGuardar = () => {
+                        messaging.getToken({ 
+                            // Tu clave VAPID pública obtenida de la consola de Firebase
+                            vapidKey: 'BKIMsVRb3mokhvxLPLW1eIULOcbbywC9M_Z0-1MNb1fFe2TDDtsT9MtbWSyAaSHO1-S4Mp9LScJV10pYJk0cQ0s' 
+                        }).then((currentToken) => {
+                            if (currentToken) {
+                                console.log('¡TOKEN GENERADO!: ', currentToken);
+                                fcmTokensRef.child(currentToken).set(true); // Guarda el token en la DB
+                                updateNotificationStatus('Activadas. Recibirás avisos.');
+                                enableNotificationsBtn.disabled = true; // Desactiva el botón
+                            } else {
+                                console.warn('No se pudo obtener el token de registro. Permiso denegado o problemas con el SW.');
+                                updateNotificationStatus('Error al obtener permiso de envío.');
+                                enableNotificationsBtn.disabled = true;
+                            }
+                        }).catch((err) => {
+                            console.error('Error al obtener token:', err);
+                            updateNotificationStatus('Error al obtener permiso de envío.');
+                            enableNotificationsBtn.disabled = true; // Desactiva el botón en caso de error
+                        });
+                    };
 
-                try {
-                    const permission = await Notification.requestPermission();
-                    if (permission === 'granted') {
+                    // Verifica el estado inicial de permisos al cargar la página
+                    if (Notification.permission === 'granted') {
                         updateNotificationStatus('Permiso concedido. Obteniendo token...');
-                        const currentToken = await messaging.getToken();
-                        if (currentToken) {
-                            await fcmTokensRef.child(currentToken).set(true); // Guarda el token en la DB
-                            updateNotificationStatus('Notificaciones activadas. Recibirás avisos.');
-                            enableNotificationsBtn.disabled = true; // Deshabilita el botón una vez suscrito
-                            console.log('FCM Token:', currentToken);
+                        obtenerTokenYGuardar();
+                    } else if (Notification.permission === 'denied') {
+                        updateNotificationStatus('Bloqueadas (permiso denegado).');
+                        enableNotificationsBtn.disabled = true;
+                    } else { // 'default'
+                        updateNotificationStatus('Pulsa el botón para activar.');
+                    }
 
-                            // Escuchar cuando el token se refresca y actualizarlo en la DB
-                            messaging.onTokenRefresh(() => {
-                                messaging.getToken().then((refreshedToken) => {
-                                    console.log('Token refreshed.', refreshedToken);
-                                    fcmTokensRef.child(refreshedToken).set(true);
-                                }).catch((err) => {
-                                    console.error('Unable to retrieve refreshed token ', err);
-                                });
-                            });
+                    // Maneja la refresco del token (IMPORTANTE para la robustez)
+                    messaging.onTokenRefresh(() => {
+                        console.log('Token de FCM refrescado. Obteniendo y guardando el nuevo token...');
+                        obtenerTokenYGuardar(); // Vuelve a obtener y guardar el token
+                    });
 
+                    // Evento del botón para activar notificaciones manualmente
+                    enableNotificationsBtn.onclick = async () => {
+                        updateNotificationStatus('Solicitando permiso...');
+                        const permission = await Notification.requestPermission();
+                        if (permission === 'granted') {
+                            updateNotificationStatus('Permiso concedido. Obteniendo token...');
+                            obtenerTokenYGuardar();
                         } else {
-                            updateNotificationStatus('No se pudo obtener el token. Asegúrate de tener un Service Worker y los permisos.');
+                            updateNotificationStatus('Permiso denegado.');
+                            enableNotificationsBtn.disabled = true;
                         }
-                    } else if (permission === 'denied') {
-                        updateNotificationStatus('Permiso denegado por el usuario.');
-                        enableNotificationsBtn.disabled = true; // Deshabilita el botón si el permiso es denegado
-                    } else {
-                        updateNotificationStatus('Permiso ignorado o bloqueado.');
-                    }
-                } catch (error) {
-                    console.error('Error al solicitar permiso o token:', error);
-                    updateNotificationStatus('Error al activar notificaciones.');
-                }
-            }
+                    };
 
-            // Listener para el botón de activación de notificaciones
-            if (enableNotificationsBtn) {
-                enableNotificationsBtn.addEventListener('click', requestNotificationPermission);
-            }
+                    // Manejar mensajes en primer plano (cuando la web está activa)
+                    messaging.onMessage(function(payload) {
+                        console.log('Mensaje FCM recibido en primer plano: ', payload);
+                        // Aquí podrías mostrar un aviso dentro de la página,
+                        // o una notificación "suave" que no sea del sistema.
+                        // Ejemplo:
+                        // alert(`Nueva notificación: ${payload.notification.title} - ${payload.notification.body}`);
+                    });
 
-            // Registrar el Service Worker (si no se ha hecho ya)
-            // Es CRUCIAL que firebase-messaging-sw.js esté en la raíz de tu dominio
-            if ('serviceWorker' in navigator) {
-              // 1. Registramos el Service Worker con la ruta y el alcance correctos para GitHub Pages
-    navigator.serviceWorker.register('/aeropuerto/firebase-messaging-sw.js', { scope: '/aeropuerto/' })
-        .then((registration) => {
-            console.log('Service Worker registrado con éxito:', registration);
-            // 2. ¡CLAVE!: Obligamos a Firebase a usar este registro y no el de la raíz
-            messaging.useServiceWorker(registration);
-            // 3. Verificamos el estado de las notificaciones
-            if (Notification.permission === 'granted') {
-                updateNotificationStatus('Activadas (ya tienes permiso).');
-                enableNotificationsBtn.disabled = true;
-                // 4. Pedimos el token usando tu clave VAPID
-                messaging.getToken({ 
-                    vapidKey: 'BKIMsVRb3mokhvxLPLW1eIULOcbbywC9M_Z0-1MNb1fFe2TDDtsT9MtbWSyAaSHO1-S4Mp9LScJV10pYJk0cQ0s' 
-                }).then((currentToken) => {
-                    if (currentToken) {
-                        console.log('¡TOKEN GENERADO!: ', currentToken);
-                        // Guardamos en la base de datos
-                        fcmTokensRef.child(currentToken).set(true);
-                    } else {
-                        console.warn('No se pudo obtener el token.');
-                    }
-                }).catch((err) => {
-                    console.error('Error al obtener el token:', err);
+                })
+                .catch((error) => {
+                    console.error('Error de registro del Service Worker:', error);
+                    updateNotificationStatus('Error de sistema (SW).');
+                    enableNotificationsBtn.disabled = true;
                 });
-            } else if (Notification.permission === 'denied') {
-                updateNotificationStatus('Bloqueadas (permiso denegado).');
-                enableNotificationsBtn.disabled = true;
-            } else {
-                updateNotificationStatus('Pulsa el botón para activar.');
-            }
-        })
-        .catch((error) => {
-            console.error('Error al registrar el Service Worker:', error);
-            updateNotificationStatus('Error al inicializar notificaciones.');
-        });
-            })
-    .catch((error) => {
-        console.error('Error al registrar el Service Worker:', error);
-        updateNotificationStatus('Error al inicializar notificaciones.');
-        enableNotificationsBtn.disabled = true;
-    });
-            }
 
-            // Manejar mensajes en primer plano (cuando la web está activa)
-            messaging.onMessage(function(payload) {
-                console.log('Message received. ', payload);
-                // Aquí podrías mostrar una notificación dentro de la misma página si lo deseas,
-                // o simplemente reproducir un sonido sin mostrar una notificación del sistema.
-                // Por ahora, solo se registrará en la consola.
-            });
-
-        } else { // Si el navegador no soporta Service Workers, Push o Notifications API
-            if (enableNotificationsBtn) {
-                enableNotificationsBtn.style.display = 'none'; // Oculta el botón
-            }
-            updateNotificationStatus('Las notificaciones no son soportadas en este navegador o la API no está disponible.');
+        } else {
+            updateNotificationStatus('Navegador no compatible con Notificaciones.');
+            enableNotificationsBtn.style.display = 'none';
         }
 
-
-        // LÓGICA DE MISAS Y ESTADÍSTICAS (EXISTENTE)
+        // LÓGICA DE LISTADO DE MISAS (EXISTENTE)
         var hoy = new Date();
         var mesK = hoy.getFullYear() + "-" + (hoy.getMonth() + 1);
         var anoK = hoy.getFullYear();
@@ -254,16 +204,12 @@
             for (var id in datos) {
                 var m = datos[id];
                 m.dt = new Date(m.f + "T" + m.h);
-                // Filtro: No más de 30 min de antigüedad
                 if ((m.dt.getTime() + 1800000) > ahora.getTime()) {
                     listaMisas.push(m);
                 }
             }
 
-            // Orden cronológico absoluto
             listaMisas.sort((a, b) => a.dt - b.dt);
-
-            // Agrupar por fecha
             var grupos = {};
             listaMisas.forEach(m => {
                 if (!grupos[m.f]) grupos[m.f] = [];
@@ -271,7 +217,6 @@
             });
 
             var fechasOrdenadas = Object.keys(grupos).sort();
-
             if (fechasOrdenadas.length === 0) {
                 listadoDiv.innerHTML = '<p style="color:#999; font-style:italic">No hay misas próximas programadas.</p>';
                 return;
@@ -280,9 +225,7 @@
             fechasOrdenadas.forEach(function(f) {
                 var opciones = { weekday: 'long', day: 'numeric', month: 'long' };
                 var fechaLegible = new Date(f + "T00:00:00").toLocaleDateString('es-ES', opciones);
-                
                 var html = '<div class="dia-grupo"><h2>' + fechaLegible + '</h2>';
-                
                 grupos[f].forEach(function(m) {
                     html += '<div class="misa">' +
                             '<span class="hora">' + m.h + 'h</span>' +
@@ -291,7 +234,6 @@
                             (m.o ? '<div class="obs">' + m.o + '</div>' : '') +
                             '</div>';
                 });
-                
                 html += '</div>';
                 listadoDiv.innerHTML += html;
             });
@@ -299,3 +241,4 @@
     </script>
 </body>
 </html>
+No hay respuesta
