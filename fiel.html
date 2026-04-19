@@ -98,135 +98,44 @@
             if (notificationStatus) notificationStatus.innerText = 'Estado de las notificaciones: ' + text;
         }
 
-        // 2. FUNCIÓN PARA OBTENER TOKEN
+        // 2. FUNCIÓN PARA OBTENER TOKEN (CON VINCULACIÓN EXPLÍCITA AL SW)
         const obtenerTokenYGuardar = () => {
-            messaging.getToken({ 
-                vapidKey: 'BKIMsVRb3mokhvxLPLW1eIULOcbbywC9M_Z0-1MNb1fFe2TDDtsT9MtbWSyAaSHO1-S4Mp9LScJV10pYJk0cQ0s' 
-            }).then((currentToken) => {
-                if (currentToken) {
-                    console.log('¡TOKEN GENERADO!: ', currentToken);
-                    fcmTokensRef.child(currentToken).set(true);
-                    updateNotificationStatus('Activadas. Recibirás avisos.');
-                    enableNotificationsBtn.disabled = true;
-                } else {
-                    console.warn('No se pudo obtener el token.');
-                    updateNotificationStatus('Error al obtener permiso.');
-                }
-            }).catch((err) => {
-                console.error('Error al obtener token:', err);
-                updateNotificationStatus('Error de conexión con Firebase.');
+            navigator.serviceWorker.ready.then((registration) => {
+                messaging.getToken({ 
+                    serviceWorkerRegistration: registration,
+                    vapidKey: 'BKIMsVRb3mokhvxLPLW1eIULOcbbywC9M_Z0-1MNb1fFe2TDDtsT9MtbWSyAaSHO1-S4Mp9LScJV10pYJk0cQ0s' 
+                }).then((currentToken) => {
+                    if (currentToken) {
+                        console.log('¡TOKEN GENERADO!: ', currentToken);
+                        fcmTokensRef.child(currentToken).set(true);
+                        updateNotificationStatus('Activadas. Recibirás avisos.');
+                        enableNotificationsBtn.disabled = true;
+                    } else {
+                        updateNotificationStatus('Error al obtener permiso.');
+                    }
+                }).catch((err) => {
+                    console.error('Error al obtener token:', err);
+                    updateNotificationStatus('Error de autenticación. Limpia datos del sitio.');
+                });
             });
         };
 
-        // 3. LÓGICA DE SERVICE WORKER
+        // 3. LÓGICA DE REGISTRO DEL SERVICE WORKER
         if ('serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window) {
             
             navigator.serviceWorker.register('/aeropuerto/firebase-messaging-sw.js', { scope: '/aeropuerto/' })
                 .then((registration) => {
                     console.log('Service Worker registrado:', registration);
                     
-                    // Esperamos a que el SW esté realmente listo y activo
+                    // Esperamos a que el SW esté activo antes de usar Messaging
                     return navigator.serviceWorker.ready;
                 })
                 .then((activeRegistration) => {
                     messaging.useServiceWorker(activeRegistration);
 
-                    // Verificar estado inicial
+                    // Verificar estado de permisos al cargar
                     if (Notification.permission === 'granted') {
                         obtenerTokenYGuardar();
                     } else if (Notification.permission === 'denied') {
                         updateNotificationStatus('Bloqueadas (permiso denegado).');
-                        enableNotificationsBtn.disabled = true;
-                    } else {
-                        updateNotificationStatus('Pulsa el botón para activar.');
-                    }
-
-                    // Evento del botón
-                    enableNotificationsBtn.onclick = async () => {
-                        updateNotificationStatus('Solicitando permiso...');
-                        const permission = await Notification.requestPermission();
-                        if (permission === 'granted') {
-                            obtenerTokenYGuardar();
-                        } else {
-                            updateNotificationStatus('Permiso denegado.');
-                            enableNotificationsBtn.disabled = true;
-                        }
-                    };
-
-                    // Refresco de token
-                    messaging.onTokenRefresh(() => {
-                        obtenerTokenYGuardar();
-                    });
-
-                    // Mensajes en primer plano
-                    messaging.onMessage((payload) => {
-                        console.log('Mensaje recibido en primer plano: ', payload);
-                    });
-                })
-                .catch((error) => {
-                    console.error('Error de sistema SW:', error);
-                    updateNotificationStatus('Error al inicializar notificaciones.');
-                });
-
-        } else {
-            updateNotificationStatus('Navegador no compatible.');
-            enableNotificationsBtn.style.display = 'none';
-        }
-
-        // 4. LÓGICA DE LISTADO DE MISAS
-        var hoy = new Date();
-        var mesK = hoy.getFullYear() + "-" + (hoy.getMonth() + 1);
-        var anoK = hoy.getFullYear();
-
-        db.ref('estadisticas/visitas/' + mesK).transaction(v => (v || 0) + 1);
-        db.ref('estadisticas/visitas/' + anoK).transaction(v => (v || 0) + 1);
-
-        var nombres = { "T1": "N. Sra. de Loreto", "T2": "N. Sra. de Guadalupe", "T4": "Santiago Apóstol" };
-
-        db.ref('misas').on('value', function(snapshot) {
-            var datos = snapshot.val();
-            var listadoDiv = document.getElementById('listado');
-            listadoDiv.innerHTML = "";
-            var ahora = new Date();
-
-            var listaMisas = [];
-            for (var id in datos) {
-                var m = datos[id];
-                m.dt = new Date(m.f + "T" + m.h);
-                if ((m.dt.getTime() + 1800000) > ahora.getTime()) {
-                    listaMisas.push(m);
-                }
-            }
-
-            listaMisas.sort((a, b) => a.dt - b.dt);
-            var grupos = {};
-            listaMisas.forEach(m => {
-                if (!grupos[m.f]) grupos[m.f] = [];
-                grupos[m.f].push(m);
-            });
-
-            var fechasOrdenadas = Object.keys(grupos).sort();
-            if (fechasOrdenadas.length === 0) {
-                listadoDiv.innerHTML = '<p style="color:#999; font-style:italic">No hay misas próximas programadas.</p>';
-                return;
-            }
-
-            fechasOrdenadas.forEach(function(f) {
-                var opciones = { weekday: 'long', day: 'numeric', month: 'long' };
-                var fechaLegible = new Date(f + "T00:00:00").toLocaleDateString('es-ES', opciones);
-                var html = '<div class="dia-grupo"><h2>' + fechaLegible + '</h2>';
-                grupos[f].forEach(function(m) {
-                    html += '<div class="misa">' +
-                            '<span class="hora">' + m.h + 'h</span>' +
-                            '<span class="term-sigla">' + m.c + '</span>' +
-                            '<span class="capilla-nom">Capilla ' + nombres[m.c] + '</span>' +
-                            (m.o ? '<div class="obs">' + m.o + '</div>' : '') +
-                            '</div>';
-                });
-                html += '</div>';
-                listadoDiv.innerHTML += html;
-            });
-        });
-    </script>
-</body>
-</html>
+                        enableNotificationsBtn.
