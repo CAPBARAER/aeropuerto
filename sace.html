@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sacerdote - Gestión y Estadísticas</title>
-    <!-- Librerías (Quita los espacios al pegar) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
@@ -21,29 +20,27 @@
     </style>
 </head>
 <body>
-    <!-- 1. FORMULARIO DE PUBLICACIÓN -->
     <div class="box">
         <h2>✝ Publicar Misa</h2>
-        <div class="pass-box">🔑 Clave de seguridad (Visible):</div>
-        <input type="text" id="passSace" placeholder="Ejemplo: CLAVE01">
+        <div class="pass-box">🔑 Clave de seguridad:</div>
+        <input type="text" id="passSace" placeholder="Introduzca la clave">
         <hr>
         <select id="c">
             <option value="T1">T1 - N. Sra. Loreto</option>
             <option value="T2">T2 - N. Sra. Guadalupe</option>
             <option value="T4">T4 - Santiago Apóstol</option>
         </select>
-        <input type="date" id="f"><input type="time" id="h">
-        <input type="text" id="obs" placeholder="Observaciones opcionales">
+        <input type="date" id="f">
+        <input type="time" id="h">
+        <input type="text" id="obs" placeholder="Observaciones (opcional)">
         <button id="btnPub" onclick="publicar()">PUBLICAR MISA</button>
     </div>
 
-    <!-- 2. GESTIÓN DE MISAS ACTIVAS (ORDENADAS) -->
     <div class="box">
         <h3>Misas Activas</h3>
         <div id="listaSace">Cargando misas...</div>
     </div>
 
-    <!-- 3. ESTADÍSTICAS AL FINAL DEL TODO -->
     <div class="box">
         <h3>📊 Estadísticas Históricas</h3>
         <div class="stats-grid">
@@ -55,30 +52,46 @@
     </div>
 
     <script>
-        var config = { databaseURL: "https://misas-aeropuerto-madrid-default-rtdb.europe-west1.firebasedatabase.app" };
-        firebase.initializeApp(config);
+        // CONFIGURACIÓN FIREBASE (Corregida e integrada)
+        var firebaseConfig = {
+            apiKey: "AIzaSyChBgp9zJMITMXAGq7HJuTFekUW2mKquaE",
+            authDomain: "misas-aeropuerto-madrid.firebaseapp.com",
+            databaseURL: "https://misas-aeropuerto-madrid-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "misas-aeropuerto-madrid",
+            storageBucket: "misas-aeropuerto-madrid.firebasestorage.app",
+            messagingSenderId: "3033346562",
+            appId: "1:3033346562:web:ffc40f202d4b6c791eed1b"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
         var db = firebase.database();
         var hoy = new Date();
         var mesKey = hoy.getFullYear() + "-" + (hoy.getMonth() + 1);
         var anoKey = hoy.getFullYear();
 
         function publicar() {
-            var c = document.getElementById('c').value, f = document.getElementById('f').value, h = document.getElementById('h').value, o = document.getElementById('obs').value, clave = document.getElementById('passSace').value;
+            var c = document.getElementById('c').value, 
+                f = document.getElementById('f').value, 
+                h = document.getElementById('h').value, 
+                o = document.getElementById('obs').value, 
+                clave = document.getElementById('passSace').value;
+
             if(!f || !h) return alert("Por favor, rellene fecha y hora");
             if(!clave) return alert("Debe introducir la clave de seguridad");
             
+            // Publicación (La seguridad real depende de las "Rules" en Firebase Console)
             db.ref('misas').push({c:c, f:f, h:h, o:o, auth: clave}, function(err){
-                if(err) alert("❌ Error: Clave incorrecta");
+                if(err) alert("❌ Error al publicar: Verifique conexión o permisos");
                 else {
                     db.ref('estadisticas/misas/' + mesKey).transaction(v => (v || 0) + 1);
                     db.ref('estadisticas/misas/' + anoKey).transaction(v => (v || 0) + 1);
-                    alert("✅ Publicada");
+                    alert("✅ Publicada con éxito");
                     document.getElementById('obs').value = "";
                 }
             });
         }
 
-        // Lectura de estadísticas (Corregida)
+        // Lectura de estadísticas en tiempo real
         db.ref('estadisticas').on('value', function(snap) {
             var s = snap.val();
             if (s) {
@@ -93,29 +106,41 @@
             }
         });
 
-        // Listado de misas ordenado
+        // Listado de misas para borrar
         db.ref('misas').on('value', function(snap) {
             var datos = snap.val(), div = document.getElementById('listaSace'), ahora = new Date();
             div.innerHTML = "";
             var lista = [];
             for (var id in datos) {
-                var m = datos[id]; m.id = id; m.dt = new Date(m.f + "T" + m.h);
+                var m = datos[id]; 
+                m.id = id; 
+                m.dt = new Date(m.f + "T" + m.h);
+                // Mostrar solo futuras o con 30 min de margen
                 if ((m.dt.getTime() + 1800000) > ahora.getTime()) lista.push(m);
             }
+            
             lista.sort((a, b) => a.dt - b.dt);
             var ultimoDia = "";
+            
             lista.forEach(function(m) {
                 if (m.f !== ultimoDia) {
                     var opciones = { weekday: 'long', day: 'numeric', month: 'short' };
                     div.innerHTML += '<div class="dia-seccion">' + m.dt.toLocaleDateString('es-ES', opciones) + '</div>';
                     ultimoDia = m.f;
                 }
-                div.innerHTML += '<div class="item-misa"><span><b>' + m.c + '</b> | ' + m.h + 'h</span>' +
+                div.innerHTML += '<div class="item-misa">' +
+                    '<span><b>' + m.c + '</b> | ' + m.h + 'h</span>' +
                     '<button class="btn-borrar" onclick="borrar(\'' + m.id + '\')">🗑️</button></div>';
             });
+            
             if(div.innerHTML === "") div.innerHTML = "<p style='color:#999'>No hay misas activas.</p>";
         });
-        function borrar(id) { if(confirm("¿Seguro que desea borrar esta misa?")) db.ref('misas/' + id).remove(); }
+
+        function borrar(id) { 
+            if(confirm("¿Seguro que desea borrar esta misa?")) {
+                db.ref('misas/' + id).remove(); 
+            }
+        }
     </script>
 </body>
 </html>
