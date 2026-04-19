@@ -4,11 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>✝ Horarios Misas</title>
-    <!-- Firebase App -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <!-- Firebase Realtime Database -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <!-- Firebase Messaging -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
     <style>
         body{font-family:sans-serif; background:#fff; padding:20px; color:#333; text-align:center}
@@ -78,7 +75,7 @@
     <div id="listado">Conectando...</div>
 
     <script>
-        // CONFIGURACIÓN FIREBASE
+        // 1. CONFIGURACIÓN FIREBASE
         var firebaseConfig = {
             apiKey: "AIzaSyChBgp9zJMITMXAGq7HJuTFekUW2mKquaE",
             authDomain: "misas-aeropuerto-madrid.firebaseapp.com",
@@ -88,9 +85,9 @@
             messagingSenderId: "3033346562",
             appId: "1:3033346562:web:ffc40f202d4b6c791eed1b"
         };
+        
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-        // NOTA: firebase.messaging() debe inicializarse DESPUÉS de firebase.initializeApp()
         const messaging = firebase.messaging(); 
         const fcmTokensRef = db.ref('fcmTokens');
 
@@ -101,49 +98,54 @@
             if (notificationStatus) notificationStatus.innerText = 'Estado de las notificaciones: ' + text;
         }
 
-        // LÓGICA DE SERVICE WORKER Y NOTIFICACIONES
-        // Condición de compatibilidad más completa
+        // 2. FUNCIÓN PARA OBTENER TOKEN
+        const obtenerTokenYGuardar = () => {
+            messaging.getToken({ 
+                vapidKey: 'BKIMsVRb3mokhvxLPLW1eIULOcbbywC9M_Z0-1MNb1fFe2TDDtsT9MtbWSyAaSHO1-S4Mp9LScJV10pYJk0cQ0s' 
+            }).then((currentToken) => {
+                if (currentToken) {
+                    console.log('¡TOKEN GENERADO!: ', currentToken);
+                    fcmTokensRef.child(currentToken).set(true);
+                    updateNotificationStatus('Activadas. Recibirás avisos.');
+                    enableNotificationsBtn.disabled = true;
+                } else {
+                    console.warn('No se pudo obtener el token.');
+                    updateNotificationStatus('Error al obtener permiso.');
+                }
+            }).catch((err) => {
+                console.error('Error al obtener token:', err);
+                updateNotificationStatus('Error de conexión con Firebase.');
+            });
+        };
+
+        // 3. LÓGICA DE SERVICE WORKER
         if ('serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window) {
             
-// Esperamos a que el SW esté listo antes de pedir nada a Firebase
-navigator.serviceWorker.register('/aeropuerto/firebase-messaging-sw.js', { scope: '/aeropuerto/' })
-    .then((registration) => {
-        console.log('Service Worker registrado:', registration);
-        
-        // ESTA LÍNEA ES CLAVE: Espera a que el SW esté activo
-        navigator.serviceWorker.ready.then((serviceWorkerRegistration) => {
-            messaging.useServiceWorker(serviceWorkerRegistration);
-            
-            // Ahora que el SW está activo, podemos verificar permisos y pedir el token
-            if (Notification.permission === 'granted') {
-                obtenerTokenYGuardar();
-            }
-        });
-    });
+            navigator.serviceWorker.register('/aeropuerto/firebase-messaging-sw.js', { scope: '/aeropuerto/' })
+                .then((registration) => {
+                    console.log('Service Worker registrado:', registration);
+                    
+                    // Esperamos a que el SW esté realmente listo y activo
+                    return navigator.serviceWorker.ready;
+                })
+                .then((activeRegistration) => {
+                    messaging.useServiceWorker(activeRegistration);
 
-                    // Verifica el estado inicial de permisos al cargar la página
+                    // Verificar estado inicial
                     if (Notification.permission === 'granted') {
-                        updateNotificationStatus('Permiso concedido. Obteniendo token...');
                         obtenerTokenYGuardar();
                     } else if (Notification.permission === 'denied') {
                         updateNotificationStatus('Bloqueadas (permiso denegado).');
                         enableNotificationsBtn.disabled = true;
-                    } else { // 'default'
+                    } else {
                         updateNotificationStatus('Pulsa el botón para activar.');
                     }
 
-                    // Maneja la refresco del token (IMPORTANTE para la robustez)
-                    messaging.onTokenRefresh(() => {
-                        console.log('Token de FCM refrescado. Obteniendo y guardando el nuevo token...');
-                        obtenerTokenYGuardar(); // Vuelve a obtener y guardar el token
-                    });
-
-                    // Evento del botón para activar notificaciones manualmente
+                    // Evento del botón
                     enableNotificationsBtn.onclick = async () => {
                         updateNotificationStatus('Solicitando permiso...');
                         const permission = await Notification.requestPermission();
                         if (permission === 'granted') {
-                            updateNotificationStatus('Permiso concedido. Obteniendo token...');
                             obtenerTokenYGuardar();
                         } else {
                             updateNotificationStatus('Permiso denegado.');
@@ -151,28 +153,27 @@ navigator.serviceWorker.register('/aeropuerto/firebase-messaging-sw.js', { scope
                         }
                     };
 
-                    // Manejar mensajes en primer plano (cuando la web está activa)
-                    messaging.onMessage(function(payload) {
-                        console.log('Mensaje FCM recibido en primer plano: ', payload);
-                        // Aquí podrías mostrar un aviso dentro de la página,
-                        // o una notificación "suave" que no sea del sistema.
-                        // Ejemplo:
-                        // alert(`Nueva notificación: ${payload.notification.title} - ${payload.notification.body}`);
+                    // Refresco de token
+                    messaging.onTokenRefresh(() => {
+                        obtenerTokenYGuardar();
                     });
 
+                    // Mensajes en primer plano
+                    messaging.onMessage((payload) => {
+                        console.log('Mensaje recibido en primer plano: ', payload);
+                    });
                 })
                 .catch((error) => {
-                    console.error('Error de registro del Service Worker:', error);
-                    updateNotificationStatus('Error de sistema (SW).');
-                    enableNotificationsBtn.disabled = true;
+                    console.error('Error de sistema SW:', error);
+                    updateNotificationStatus('Error al inicializar notificaciones.');
                 });
 
         } else {
-            updateNotificationStatus('Navegador no compatible con Notificaciones.');
+            updateNotificationStatus('Navegador no compatible.');
             enableNotificationsBtn.style.display = 'none';
         }
 
-        // LÓGICA DE LISTADO DE MISAS (EXISTENTE)
+        // 4. LÓGICA DE LISTADO DE MISAS
         var hoy = new Date();
         var mesK = hoy.getFullYear() + "-" + (hoy.getMonth() + 1);
         var anoK = hoy.getFullYear();
@@ -229,4 +230,3 @@ navigator.serviceWorker.register('/aeropuerto/firebase-messaging-sw.js', { scope
     </script>
 </body>
 </html>
-No hay respuesta
