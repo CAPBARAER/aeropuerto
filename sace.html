@@ -106,7 +106,7 @@
             }
         });
 
-        // Listado de misas para borrar
+       // Listado de misas para borrar (ACTUALIZADO CON OBSERVACIONES)
         db.ref('misas').on('value', function(snap) {
             var datos = snap.val(), div = document.getElementById('listaSace'), ahora = new Date();
             div.innerHTML = "";
@@ -128,8 +128,13 @@
                     div.innerHTML += '<div class="dia-seccion">' + m.dt.toLocaleDateString('es-ES', opciones) + '</div>';
                     ultimoDia = m.f;
                 }
+                
+                // Nuevo formato: Incluye el comentario si existe
                 div.innerHTML += '<div class="item-misa">' +
-                    '<span><b>' + m.c + '</b> | ' + m.h + 'h</span>' +
+                    '<div style="flex:1">' +
+                        '<span><b>' + m.c + '</b> | ' + m.h + 'h</span>' +
+                        (m.o ? '<br><small style="color:#666; font-style:italic; display:block; margin-top:2px">' + m.o + '</small>' : '') +
+                    '</div>' +
                     '<button class="btn-borrar" onclick="borrar(\'' + m.id + '\')">🗑️</button></div>';
             });
             
