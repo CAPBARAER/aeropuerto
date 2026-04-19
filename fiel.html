@@ -89,10 +89,15 @@
     <div id="listado">Conectando...</div>
 
     <script>
-        // CONFIGURACIÓN DE FIREBASE (CORREGIDO: Añadido projectId)
+        // CONFIGURACIÓN COMPLETA DE FIREBASE
         var firebaseConfig = {
+            apiKey: "AIzaSyChBgp9zJMITMXAGq7HJuTFekUW2mKquaE",
+            authDomain: "misas-aeropuerto-madrid.firebaseapp.com",
             databaseURL: "https://misas-aeropuerto-madrid-default-rtdb.europe-west1.firebasedatabase.app",
-            projectId: "misas-aeropuerto-madrid" // <-- ¡IMPORTANTE! Se añadió tu Project ID
+            projectId: "misas-aeropuerto-madrid",
+            storageBucket: "misas-aeropuerto-madrid.firebasestorage.app",
+            messagingSenderId: "3033346562",
+            appId: "1:3033346562:web:ffc40f202d4b6c791eed1b"
         };
         firebase.initializeApp(firebaseConfig);
         var db = firebase.database();
