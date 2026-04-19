@@ -8,9 +8,10 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
         body{font-family:sans-serif; background:#fff; padding:20px; color:#333; text-align:center}
-        .header-content { display: flex; align-items: center; justify-content: center; margin-bottom: 20px; }
-        .cross-icon { font-size: 80px; color: #8B0000; margin-right: 15px; } /* Cruz más grande y colorida */
-        h1{font-size: 52px; margin: 0; line-height: 1; text-transform: uppercase;} /* Texto 100% más grande */
+        .header-content { display: flex; align-items: center; justify-content: center; margin-bottom: 5px; flex-wrap: wrap;} /* Ajustado margin-bottom */
+        .cross-icon { font-size: 80px; color: #8B0000; margin-right: 15px; }
+        h1{font-size: 52px; margin: 0; line-height: 1; text-transform: uppercase;}
+        .subtitle { font-size: 26px; color: #555; margin-top: 5px; margin-bottom: 20px; display: block; width: 100%; } /* Nuevo estilo para el subtítulo */
         .dia-grupo{max-width:500px; margin:0 auto 30px auto; text-align:left}
         h2{margin:0; border-bottom:2px solid #000; padding-bottom:5px; font-size:22px; text-transform: capitalize}
         .misa{background:#f9f9f9; padding:15px; margin:10px 0; border-radius:5px; border-left:6px solid #000}
@@ -19,7 +20,7 @@
         .capilla-nom{font-size:13px; color:#666; display:block; margin-top:4px}
         .obs{font-size:15px; color:#444; font-style:italic; margin-top:8px; padding-top:5px; border-top:1px solid #ddd}
         .info-note {
-            font-size: 0.8em; /* Aproximadamente 30% más pequeño que el tamaño de fuente base, que es lo que suele ser un `em` o `rem` para notas */
+            font-size: 1.6em; /* Duplicado de 0.8em a 1.6em */
             color: #666;
             margin-top: 20px;
             padding: 10px;
@@ -36,6 +37,7 @@
     <div class="header-content">
         <span class="cross-icon">✝</span>
         <h1>Horarios de Misas</h1>
+        <p class="subtitle">Aeropuerto Madrid-Barajas</p> <!-- Nuevo subtítulo -->
     </div>
     <p class="info-note">
         Nota: En esta página se publican misas puntuales con carácter extraordinario. Dado que es celebrada por sacerdotes en tránsito, las horas son estimadas. Se recomienda prestar atención a posibles modificaciones y acudir antes a la capilla.
